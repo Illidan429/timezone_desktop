@@ -1,0 +1,11 @@
+# 参考项目：仅本地查阅，不进入版本库
+midori-companion-avatar-main.zip
+/reference/
+
+# Node / 构建产物
+node_modules/
+dist/
+
+# 应用运行时本地数据（正式素材在此目录时不应入库）
+assets-app/**/CREDITS.md.bak
+*.log

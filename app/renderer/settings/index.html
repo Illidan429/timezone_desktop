@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>桌宠伴侣 · 设置</title>
+  <style>
+    :root { --brand: #ffb25a; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 20px 24px; background: #f6f7fb;
+      font-family: "Microsoft YaHei", system-ui, sans-serif; color: #2a2f3a;
+      font-size: 14px;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .tip { color: #7b8494; font-size: 12px; margin-bottom: 18px; }
+    section {
+      background: #fff; border-radius: 14px; padding: 16px 18px;
+      margin-bottom: 16px; box-shadow: 0 1px 4px rgba(20,30,60,0.06);
+    }
+    section h2 { font-size: 15px; margin: 0 0 12px; }
+    .api-block { border: 1px solid #edf0f5; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+    .api-block h3 { margin: 0 0 10px; font-size: 14px; }
+    .row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
+    .row label { width: 76px; color: #5a6373; flex-shrink: 0; }
+    .row input, .row select {
+      flex: 1; min-width: 180px; border: 1px solid #dfe3ea; border-radius: 8px;
+      padding: 8px 10px; font-size: 13px; outline: none;
+    }
+    .row input:focus, .row select:focus { border-color: var(--brand); }
+    .testbtn {
+      border: none; background: #eef1f6; border-radius: 8px;
+      padding: 8px 14px; cursor: pointer; font-size: 13px;
+    }
+    .testbtn:hover { background: #e2e7f0; }
+    .test-result { font-size: 12px; margin-left: 8px; }
+    .test-result.ok { color: #1a9e5c; }
+    .test-result.fail { color: #d64545; }
+    .grid2 { display: flex; gap: 24px; flex-wrap: wrap; }
+    .pref-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .pref-row label { width: 90px; color: #5a6373; }
+    .actions { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+    .primary {
+      background: var(--brand); color: #fff; border: none; border-radius: 10px;
+      padding: 10px 22px; font-size: 14px; cursor: pointer;
+    }
+    .primary:hover { background: #f5a340; }
+    .ghost {
+      background: #fff; border: 1px solid #d8dde6; border-radius: 10px;
+      padding: 10px 16px; cursor: pointer; font-size: 13px; color: #5a6373;
+    }
+    .ghost:hover { border-color: var(--brand); color: var(--brand); }
+    #saveResult { font-size: 13px; color: #1a9e5c; margin-left: 6px; }
+  </style>
+</head>
+<body>
+  <h1>设置</h1>
+  <div class="tip">AI 服务使用 OpenAI 兼容接口格式。API Key 仅保存在本机（加密存储），不会回显。配置后请逐项点击「测试」验证可用。</div>
+
+  <section>
+    <h2>AI 服务</h2>
+    <div id="apiBlocks"></div>
+  </section>
+
+  <section>
+    <h2>偏好</h2>
+    <div class="grid2">
+      <div>
+        <div class="pref-row"><label>主题</label>
+          <select id="theme"><option value="day">日间</option><option value="night">夜间</option></select>
+        </div>
+        <div class="pref-row"><label>默认模式</label>
+          <select id="mode">
+            <option value="push">按键说话</option>
+            <option value="handsfree">免提监听</option>
+            <option value="text">文字输入</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div class="pref-row"><label>窗口置顶</label>
+          <input type="checkbox" id="topmost" />
+        </div>
+        <div class="pref-row"><label>播放音量</label>
+          <input type="range" id="volume" min="0" max="100" step="1" style="flex:1" />
+          <span id="volumeVal"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>对话</h2>
+    <div class="actions">
+      <button class="ghost" id="clearBtn">清空对话上下文</button>
+      <span style="color:#7b8494;font-size:12px">清除后角色将忘记之前的聊天内容</span>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button class="primary" id="saveBtn">保存设置</button>
+    <span id="saveResult"></span>
+  </div>
+
+  <script src="./bundle.js"></script>
+</body>
+</html>

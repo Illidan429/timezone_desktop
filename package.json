@@ -1,0 +1,62 @@
+{
+  "name": "bili-desktop-pet",
+  "productName": "桌宠伴侣",
+  "version": "0.1.0",
+  "private": true,
+  "description": "B站主播桌面宠物：图片立绘 + 视线跟随 + 语音聊天",
+  "main": "app/main/main.js",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm run build:ui && electron .",
+    "start": "npm run build:ui && electron .",
+    "smoke": "npm run build:ui && electron . --smoke",
+    "build:ui": "node scripts/build-renderer.mjs",
+    "gen:assets": "node scripts/gen-placeholder-assets.mjs",
+    "dist": "npm run build:ui && electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.2"
+  },
+  "build": {
+    "appId": "com.illidan429.bili-desktop-pet",
+    "productName": "桌宠伴侣",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "app/**/*",
+      "assets-app/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-portable-${version}.${ext}"
+    }
+  }
+}

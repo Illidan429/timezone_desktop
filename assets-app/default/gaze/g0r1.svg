@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+  <g transform="rotate(0 300 420)">
+    <!-- 耳朵 -->
+    <path d="M 190 170 L 205 52 L 292 122 Z" fill="#ffb25a" stroke="#b06a2a" stroke-width="6"/>
+    <path d="M 410 170 L 395 52 L 308 122 Z" fill="#ffb25a" stroke="#b06a2a" stroke-width="6"/>
+    <path d="M 205 150 L 212 92 L 262 128 Z" fill="#ffd9c2"/>
+    <path d="M 395 150 L 388 92 L 338 128 Z" fill="#ffd9c2"/>
+    <!-- 身体 -->
+    <ellipse cx="300" cy="580" rx="175" ry="185" fill="#ffb25a" stroke="#b06a2a" stroke-width="6"/>
+    <ellipse cx="300" cy="625" rx="105" ry="120" fill="#ffe3c2"/>
+    <!-- 头 -->
+    <circle cx="300" cy="260" r="150" fill="#ffb25a" stroke="#b06a2a" stroke-width="6"/>
+    <!-- 眼睛 -->
+    <circle cx="235" cy="255" r="26" fill="#fff" stroke="#b06a2a" stroke-width="3"/>
+    <circle cx="365" cy="255" r="26" fill="#fff" stroke="#b06a2a" stroke-width="3"/>
+    <circle cx="220" cy="255" r="12" fill="#3a2b20"/>
+    <circle cx="350" cy="255" r="12" fill="#3a2b20"/>
+    <circle cx="224" cy="251" r="4" fill="#fff"/>
+    <circle cx="354" cy="251" r="4" fill="#fff"/>
+    
+    <path d="M 300 288 L 300 310" stroke="#b06a2a" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 282 330 Q 300 342 318 330" stroke="#b06a2a" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- 胡须 -->
+    <path d="M 165 300 L 118 290 M 165 325 L 120 330" stroke="#b06a2a" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 435 300 L 482 290 M 435 325 L 480 330" stroke="#b06a2a" stroke-width="4" stroke-linecap="round"/>
+    
+  </g>
+</svg>

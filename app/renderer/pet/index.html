@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>桌宠</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      background: transparent; overflow: hidden;
+      font-family: "Microsoft YaHei", system-ui, sans-serif;
+      user-select: none; cursor: default;
+    }
+    #stage { position: absolute; inset: 0; }
+    #fxCanvas { position: absolute; inset: 0; pointer-events: none; }
+    #charStack {
+      position: absolute; left: 50%; bottom: 90px;
+      transform: translateX(-50%);
+      width: 340px; height: 453px; /* 600x800 按比例缩放 */
+    }
+    #charStack img {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none; -webkit-user-drag: none;
+    }
+    #charStack.dragging { cursor: grabbing; }
+    #subtitle {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: 560px; max-width: 440px; min-width: 120px;
+      background: rgba(30, 32, 44, 0.88); color: #fff;
+      border-radius: 14px; padding: 10px 14px;
+      font-size: 14px; line-height: 1.5; display: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
+    #subtitle .user { color: #ffd27d; margin-bottom: 4px; }
+    #subtitle .status { color: #9fb3c8; font-size: 12px; }
+    #subtitle .close {
+      position: absolute; right: 8px; top: 6px; cursor: pointer;
+      color: #8899aa; font-size: 12px;
+    }
+    #controls {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: 18px; display: flex; gap: 6px; align-items: center;
+      background: rgba(255,255,255,0.92); border-radius: 18px;
+      padding: 8px 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      transition: opacity 0.3s;
+    }
+    #controls.hidden { opacity: 0; pointer-events: none; }
+    #controls button {
+      border: none; border-radius: 12px; padding: 7px 10px;
+      background: #eef1f6; cursor: pointer; font-size: 13px; white-space: nowrap;
+    }
+    #controls button:active { background: #dfe5ee; }
+    #controls #talkBtn { background: #ffd9a0; }
+    #controls #talkBtn.recording { background: #ff7d6a; color: #fff; }
+    #controls input {
+      width: 130px; border: 1px solid #dfe3ea; border-radius: 12px;
+      padding: 7px 9px; font-size: 13px; outline: none;
+    }
+    #controls input:focus { border-color: #ffb25a; }
+    #controls button:disabled { opacity: 0.45; cursor: not-allowed; }
+    body.night #subtitle { background: rgba(18, 20, 34, 0.92); }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <canvas id="fxCanvas"></canvas>
+    <div id="charStack">
+      <img id="poseImg" alt="" />
+      <img id="gazeImg" alt="" />
+      <img id="blinkImg" alt="" />
+      <img id="mouthImg" alt="" />
+    </div>
+    <div id="subtitle">
+      <span class="close" id="subtitleClose">✕</span>
+      <div class="user" id="subtitleUser"></div>
+      <div class="reply" id="subtitleReply"></div>
+      <div class="status" id="subtitleStatus"></div>
+    </div>
+    <div id="controls">
+      <button id="modeBtn" title="切换输入模式">按键说话</button>
+      <button id="talkBtn" title="按住说话">🎤 按住说话</button>
+      <input id="textInput" placeholder="打字聊天…" />
+      <button id="sendBtn">发送</button>
+      <button id="settingsBtn" title="设置">⚙</button>
+    </div>
+  </div>
+  <script src="./bundle.js"></script>
+</body>
+</html>

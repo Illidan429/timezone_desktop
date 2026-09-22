@@ -1,0 +1,61 @@
+{
+  "name": "占位酱",
+  "version": 1,
+  "canvas": {
+    "width": 600,
+    "height": 800
+  },
+  "poses": [
+    {
+      "id": "idle",
+      "name": "待机",
+      "src": "poses/idle.svg"
+    },
+    {
+      "id": "happy",
+      "name": "开心",
+      "src": "poses/happy.svg"
+    }
+  ],
+  "gaze": {
+    "pose": "idle",
+    "cols": 3,
+    "rows": 3,
+    "srcPattern": "gaze/g{c}r{r}.svg"
+  },
+  "blink": {
+    "frames": [
+      {
+        "level": 1,
+        "src": "blink/half.svg"
+      },
+      {
+        "level": 2,
+        "src": "blink/closed.svg"
+      }
+    ]
+  },
+  "mouth": {
+    "frames": [
+      {
+        "level": 1,
+        "src": "mouth/half.svg"
+      },
+      {
+        "level": 2,
+        "src": "mouth/open.svg"
+      }
+    ]
+  },
+  "themes": {
+    "day": {
+      "name": "日间",
+      "starCount": 0
+    },
+    "night": {
+      "name": "夜间",
+      "starCount": 60
+    }
+  },
+  "testAudio": "audio/test.wav"
+}
