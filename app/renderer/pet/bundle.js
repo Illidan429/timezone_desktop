@@ -27,13 +27,24 @@
   function assetUrl(src) {
     return ASSET_BASE + src;
   }
-  function preloadImages(urls) {
-    return Promise.all(urls.map((u) => new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ url: u, ok: true, img });
-      img.onerror = () => resolve({ url: u, ok: false });
-      img.src = u;
-    })));
+  async function preloadImages(urls) {
+    return Promise.all(urls.map(async (u) => {
+      try {
+        const res = await fetch(u);
+        if (!res.ok) throw new Error(String(res.status));
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = objectUrl;
+        });
+        return { url: u, ok: true, img };
+      } catch {
+        return { url: u, ok: false };
+      }
+    }));
   }
   function collectImageUrls(m) {
     const urls = [];
@@ -95,7 +106,11 @@
       if (!pose) return;
       this.poseId = pose.id;
       const img = this.img(pose.src);
-      if (img) this.el.pose.src = img.src;
+      this._setLayer(this.el.pose, img);
+    }
+    // 图层赋值统一走 background-image：加载失败只会不绘制，绝不出现占位框
+    _setLayer(el, img) {
+      el.style.backgroundImage = img ? `url("${img.src}")` : "none";
     }
     // 视线：按光标相对角色中心的位置映射到方向网格
     gazeCellFor(cursorScreen) {
@@ -115,20 +130,15 @@
     setGaze(cell) {
       this.gazeCell = cell;
       if (!this.gazeEnabled || !cell) {
-        this.el.gaze.removeAttribute("src");
+        this._setLayer(this.el.gaze, null);
         return;
       }
-      const active = this.gazeAppliesToPose();
-      if (!active) {
-        this.el.gaze.removeAttribute("src");
+      if (!this.gazeAppliesToPose()) {
+        this._setLayer(this.el.gaze, null);
         return;
       }
       const src = this.m.gaze.srcPattern.replace("{c}", cell.c).replace("{r}", cell.r);
-      const img = this.img(src);
-      if (img) {
-        this.el.gaze.src = img.src;
-        this.el.gaze.style.display = "";
-      } else this.el.gaze.removeAttribute("src");
+      this._setLayer(this.el.gaze, this.img(src));
     }
     gazeAppliesToPose() {
       return !this.m.gaze?.pose || this.m.gaze.pose === this.poseId;
@@ -136,24 +146,20 @@
     setBlinkLevel(level) {
       this.blinkLevel = level;
       if (!this.blinkEnabled || !level) {
-        this.el.blink.removeAttribute("src");
+        this._setLayer(this.el.blink, null);
         return;
       }
       const frame = (this.m.blink.frames || []).find((f) => f.level === level);
-      const img = frame && this.img(frame.src);
-      if (img) this.el.blink.src = img.src;
-      else this.el.blink.removeAttribute("src");
+      this._setLayer(this.el.blink, frame && this.img(frame.src));
     }
     setMouthLevel(level) {
       this.mouthLevel = level;
       if (!this.mouthEnabled || !level) {
-        this.el.mouth.removeAttribute("src");
+        this._setLayer(this.el.mouth, null);
         return;
       }
       const frame = (this.m.mouth.frames || []).find((f) => f.level === level);
-      const img = frame && this.img(frame.src);
-      if (img) this.el.mouth.src = img.src;
-      else this.el.mouth.removeAttribute("src");
+      this._setLayer(this.el.mouth, frame && this.img(frame.src));
     }
     // 每帧刷新：视线帧 + 微位移（平滑趋近目标）
     tick(dt, cursorScreen) {
@@ -848,6 +854,8 @@
       player.pushLevel(0);
       await sleep2(250);
       checks.mouthRelease = stage.mouthLevel === 0;
+      player.ensureCtx();
+      player.setVolume(0);
       let started = false;
       player.onStart = () => {
         started = true;
@@ -862,10 +870,12 @@
       checks.audioSequential = player.playing;
       player.stopAndClear();
       checks.audioStops = !player.playing;
+      player.setVolume(0.9);
       checks.hitChar = stage.hitTest({ x: cx, y: cy });
       checks.hitEmpty = stage.hitTest({ x: window.screenX + 4, y: window.screenY + 4 }) === false;
+      checks.dbg = `screenX=${window.screenX},screenY=${window.screenY},rect=${JSON.stringify(stage.el.stack.getBoundingClientRect())},outerW=${window.outerWidth}`;
       stage.applyPose("happy");
-      checks.poseSwitch = stage.el.pose.src.includes("happy");
+      checks.poseSwitch = stage.poseId === "happy" && stage.el.pose.style.backgroundImage.includes("blob:");
       stage.applyPose("idle");
       ui.setTheme("night");
       checks.themeNight = document.body.classList.contains("night");
@@ -883,7 +893,7 @@
     } catch (e) {
       checks.fatal = String(e && e.stack || e);
     }
-    checks.allOk = Object.entries(checks).every(([k, v]) => k === "fatal" || v === true);
+    checks.allOk = Object.entries(checks).every(([k, v]) => k === "fatal" || k === "dbg" || k.endsWith("Dbg") || v === true);
     return checks;
   };
   boot();

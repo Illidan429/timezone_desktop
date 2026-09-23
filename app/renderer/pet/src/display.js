@@ -31,7 +31,12 @@ export class Stage {
     if (!pose) return;
     this.poseId = pose.id;
     const img = this.img(pose.src);
-    if (img) this.el.pose.src = img.src;
+    this._setLayer(this.el.pose, img);
+  }
+
+  // 图层赋值统一走 background-image：加载失败只会不绘制，绝不出现占位框
+  _setLayer(el, img) {
+    el.style.backgroundImage = img ? `url("${img.src}")` : 'none';
   }
 
   // 视线：按光标相对角色中心的位置映射到方向网格
@@ -52,13 +57,10 @@ export class Stage {
 
   setGaze(cell) {
     this.gazeCell = cell;
-    if (!this.gazeEnabled || !cell) { this.el.gaze.removeAttribute('src'); return; }
-    const active = this.gazeAppliesToPose();
-    if (!active) { this.el.gaze.removeAttribute('src'); return; }
+    if (!this.gazeEnabled || !cell) { this._setLayer(this.el.gaze, null); return; }
+    if (!this.gazeAppliesToPose()) { this._setLayer(this.el.gaze, null); return; }
     const src = this.m.gaze.srcPattern.replace('{c}', cell.c).replace('{r}', cell.r);
-    const img = this.img(src);
-    if (img) { this.el.gaze.src = img.src; this.el.gaze.style.display = ''; }
-    else this.el.gaze.removeAttribute('src');
+    this._setLayer(this.el.gaze, this.img(src));
   }
 
   gazeAppliesToPose() {
@@ -68,20 +70,16 @@ export class Stage {
 
   setBlinkLevel(level) {
     this.blinkLevel = level;
-    if (!this.blinkEnabled || !level) { this.el.blink.removeAttribute('src'); return; }
+    if (!this.blinkEnabled || !level) { this._setLayer(this.el.blink, null); return; }
     const frame = (this.m.blink.frames || []).find(f => f.level === level);
-    const img = frame && this.img(frame.src);
-    if (img) this.el.blink.src = img.src;
-    else this.el.blink.removeAttribute('src');
+    this._setLayer(this.el.blink, frame && this.img(frame.src));
   }
 
   setMouthLevel(level) {
     this.mouthLevel = level;
-    if (!this.mouthEnabled || !level) { this.el.mouth.removeAttribute('src'); return; }
+    if (!this.mouthEnabled || !level) { this._setLayer(this.el.mouth, null); return; }
     const frame = (this.m.mouth.frames || []).find(f => f.level === level);
-    const img = frame && this.img(frame.src);
-    if (img) this.el.mouth.src = img.src;
-    else this.el.mouth.removeAttribute('src');
+    this._setLayer(this.el.mouth, frame && this.img(frame.src));
   }
 
   // 每帧刷新：视线帧 + 微位移（平滑趋近目标）

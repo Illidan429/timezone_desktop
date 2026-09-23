@@ -13,6 +13,11 @@ const RENDERER_DIR = path.join(__dirname, '..', 'renderer');
 const ASSETS_ROOT = path.join(ROOT, 'assets-app');
 const IS_SMOKE = process.argv.includes('--smoke');
 
+// 透明窗口在远程桌面/无 GPU 合成环境下会整体变白，禁用硬件加速后走分层窗口路径，透明可靠
+app.disableHardwareAcceleration();
+// 双屏缩放比不同（如竖屏副屏）时，跨屏移动触发 DPI 重排会破坏透明合成；锁定缩放因子规避
+app.commandLine.appendSwitch('force-device-scale-factor', '1');
+
 let petWin = null;
 let settingsWin = null;
 let tray = null;
@@ -70,6 +75,7 @@ function createPetWindow() {
   petWin = new BrowserWindow({
     x: b.x, y: b.y, width: b.width, height: b.height,
     transparent: true, frame: false, resizable: false,
+    thickFrame: false,
     alwaysOnTop: !!prefs.topmost, skipTaskbar: true, hasShadow: false,
     backgroundColor: '#00000000',
     webPreferences: {
@@ -220,8 +226,8 @@ function registerIpc() {
 
   ipcMain.handle('window:moveBy', (_e, dx, dy) => {
     if (!petWin) return;
-    const b = petWin.getBounds();
-    petWin.setBounds({ x: b.x + dx, y: b.y + dy, width: b.width, height: b.height });
+    const [x, y] = petWin.getPosition();
+    petWin.setPosition(x + dx, y + dy); // 只改位置不改尺寸，避免触发透明窗口重绘问题
     scheduleSaveBounds();
   });
   ipcMain.handle('window:setIgnoreMouse', (_e, ignore) => {
@@ -275,6 +281,7 @@ async function runSmoke() {
       await new Promise(r => setTimeout(r, 300));
       const after = petWin.getBounds();
       result.checks.windowMove = after.x === before.x + 15 && after.y === before.y + 10;
+      result.checks.moveDbg = `before=(${before.x},${before.y}) after=(${after.x},${after.y})`;
       petWin.setBounds(before);
       // Key 加密回读（主进程 store 直接验证）
       const { setApiKey, getApiKey } = await import('./store.js');

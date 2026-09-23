@@ -29,14 +29,26 @@ export function assetUrl(src) {
   return ASSET_BASE + src;
 }
 
-// 预加载图片，单个失败不阻塞（记入 broken）
-export function preloadImages(urls) {
-  return Promise.all(urls.map(u => new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => resolve({ url: u, ok: true, img });
-    img.onerror = () => resolve({ url: u, ok: false });
-    img.src = u;
-  })));
+// 预加载图片：每个 URL 只请求一次，转成 blob 内存地址
+// 之后图层换帧直接用 blob src，不再走协议请求，杜绝偶发加载失败闪出占位框
+export async function preloadImages(urls) {
+  return Promise.all(urls.map(async u => {
+    try {
+      const res = await fetch(u);
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = objectUrl;
+      });
+      return { url: u, ok: true, img };
+    } catch {
+      return { url: u, ok: false };
+    }
+  }));
 }
 
 // 依清单枚举全部图片资源地址

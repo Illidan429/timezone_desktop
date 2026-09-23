@@ -164,6 +164,9 @@ window.__PET_SMOKE_CHECKS__ = async function () {
     checks.mouthRelease = stage.mouthLevel === 0;
 
     // 4. 播放队列：内置测试音解码入队并开始播放，可停止；连续入队 3 条依序播放
+    // 冒烟自检静音：避免自动化测试时外放声音
+    player.ensureCtx();
+    player.setVolume(0);
     let started = false;
     player.onStart = () => { started = true; };
     const wav = await (await fetch('app://assets/default/audio/test.wav')).arrayBuffer();
@@ -174,14 +177,16 @@ window.__PET_SMOKE_CHECKS__ = async function () {
     checks.audioSequential = player.playing;
     player.stopAndClear();
     checks.audioStops = !player.playing;
+    player.setVolume(0.9);
 
     // 5. 命中检测：角色中心命中；窗口左上角空白处不命中
     checks.hitChar = stage.hitTest({ x: cx, y: cy });
     checks.hitEmpty = stage.hitTest({ x: window.screenX + 4, y: window.screenY + 4 }) === false;
+    checks.dbg = `screenX=${window.screenX},screenY=${window.screenY},rect=${JSON.stringify(stage.el.stack.getBoundingClientRect())},outerW=${window.outerWidth}`;
 
-    // 6. 姿态切换
+    // 6. 姿态切换（图层走 background-image，断言样式与内部状态）
     stage.applyPose('happy');
-    checks.poseSwitch = stage.el.pose.src.includes('happy');
+    checks.poseSwitch = stage.poseId === 'happy' && stage.el.pose.style.backgroundImage.includes('blob:');
     stage.applyPose('idle');
 
     // 7. 主题切换
@@ -207,7 +212,7 @@ window.__PET_SMOKE_CHECKS__ = async function () {
   } catch (e) {
     checks.fatal = String(e && e.stack || e);
   }
-  checks.allOk = Object.entries(checks).every(([k, v]) => k === 'fatal' || v === true);
+  checks.allOk = Object.entries(checks).every(([k, v]) => k === 'fatal' || k === 'dbg' || k.endsWith('Dbg') || v === true);
   return checks;
 };
 
