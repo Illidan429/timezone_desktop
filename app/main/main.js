@@ -196,6 +196,9 @@ function registerIpc() {
     rebuildTrayMenu();
     const view = sanitizedView();
     petWin?.webContents.send('prefs-changed', view.prefs);
+    // 同步完整配置视图（含各 API 是否已配置），渲染端即时刷新语音可用状态
+    settingsWin?.webContents.send('settings-changed', view);
+    petWin?.webContents.send('settings-changed', view);
     return view;
   });
 

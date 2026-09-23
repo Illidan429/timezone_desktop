@@ -43,6 +43,7 @@ async function boot() {
     pipeline = new ChatPipeline({ player, recorder, ui });
 
     player.onLevel = lvl => stage.setMouthLevel(lvl);
+    player.onEnd = () => { if (pipeline.state === 'speaking') pipeline.setState('idle'); };
 
     // 4. 应用设置
     const { prefs, apis } = await window.petAPI.settingsGet();
@@ -51,6 +52,9 @@ async function boot() {
     wireControls();
     wireCursorAndDrag();
     window.petAPI.onPrefsChanged(applyPrefs);
+    window.petAPI.onSettingsChanged((view) => {
+      pipeline.hasAsr = Boolean(view?.apis?.asr?.baseUrl && view?.apis?.asr?.hasKey);
+    });
 
     blinker.start();
     state.ready = true;
@@ -215,5 +219,8 @@ window.__PET_SMOKE_CHECKS__ = async function () {
   checks.allOk = Object.entries(checks).every(([k, v]) => k === 'fatal' || k === 'dbg' || k.endsWith('Dbg') || v === true);
   return checks;
 };
+
+// 调试/验收接口：直接触达各模块（不影响正常功能）
+window.__PET_DEBUG__ = { get stage() { return stage; }, get player() { return player; }, get recorder() { return recorder; }, get pipeline() { return pipeline; }, get ui() { return ui; } };
 
 boot();

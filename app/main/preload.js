@@ -21,5 +21,6 @@ contextBridge.exposeInMainWorld('petAPI', {
   appQuit: () => ipcRenderer.invoke('app:quit'),
 
   onCursor: (cb) => { ipcRenderer.on('cursor', (_e, pt) => cb(pt)); },
-  onPrefsChanged: (cb) => { ipcRenderer.on('prefs-changed', (_e, prefs) => cb(prefs)); }
+  onPrefsChanged: (cb) => { ipcRenderer.on('prefs-changed', (_e, prefs) => cb(prefs)); },
+  onSettingsChanged: (cb) => { ipcRenderer.on('settings-changed', (_e, view) => cb(view)); }
 });

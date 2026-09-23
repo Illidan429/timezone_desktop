@@ -744,12 +744,18 @@
       ui = new Ui(mres.manifest);
       pipeline = new ChatPipeline({ player, recorder, ui });
       player.onLevel = (lvl) => stage.setMouthLevel(lvl);
+      player.onEnd = () => {
+        if (pipeline.state === "speaking") pipeline.setState("idle");
+      };
       const { prefs, apis } = await window.petAPI.settingsGet();
       applyPrefs(prefs);
       pipeline.hasAsr = Boolean(apis?.asr?.baseUrl && apis?.asr?.hasKey);
       wireControls();
       wireCursorAndDrag();
       window.petAPI.onPrefsChanged(applyPrefs);
+      window.petAPI.onSettingsChanged((view) => {
+        pipeline.hasAsr = Boolean(view?.apis?.asr?.baseUrl && view?.apis?.asr?.hasKey);
+      });
       blinker.start();
       state.ready = true;
       window.__SMOKE_READY__ = true;
@@ -896,5 +902,16 @@
     checks.allOk = Object.entries(checks).every(([k, v]) => k === "fatal" || k === "dbg" || k.endsWith("Dbg") || v === true);
     return checks;
   };
+  window.__PET_DEBUG__ = { get stage() {
+    return stage;
+  }, get player() {
+    return player;
+  }, get recorder() {
+    return recorder;
+  }, get pipeline() {
+    return pipeline;
+  }, get ui() {
+    return ui;
+  } };
   boot();
 })();

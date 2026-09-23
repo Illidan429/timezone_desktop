@@ -112,7 +112,7 @@ export async function testApi(type) {
       const { res, latency } = await request(type, joinUrl(c.baseUrl, '/audio/speech'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${c.key}` },
-        body: JSON.stringify({ model: c.model, input: '你好', voice: c.voice, response_format: 'mp3' })
+        body: JSON.stringify({ model: c.model, input: '你好', voice: c.voice })
       });
       const buf = await res.arrayBuffer();
       if (buf.byteLength < 100) return { ok: false, detail: '服务返回内容异常（音频为空）' };
@@ -161,7 +161,7 @@ export async function synthesize(text) {
   const { res } = await request('tts', joinUrl(c.baseUrl, '/audio/speech'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${c.key}` },
-    body: JSON.stringify({ model: c.model, input: text, voice: c.voice, response_format: 'mp3' })
+    body: JSON.stringify({ model: c.model, input: text, voice: c.voice })
   });
   return res.arrayBuffer();
 }
