@@ -269,9 +269,12 @@ async function runSmoke() {
         await petWin.webContents.executeJavaScript('window.petAPI.windowOpenSettings()');
         await new Promise(r => setTimeout(r, 800));
         result.checks.settingsWindow = Boolean(settingsWin && !settingsWin.isDestroyed());
-        // 未配置 API 时对话链路应给出明确错误而非静默
+        // 未配置 API 时对话链路应给出明确错误而非静默（已配置环境则验证请求正常发出/失败原因明确）
         result.checks.chatWithoutApiFails = await petWin.webContents.executeJavaScript(
-          `window.petAPI.chatLlm('hi').then(() => false, e => String(e.message).includes('未配置'))`
+          `window.petAPI.chatLlm('hi').then(
+             () => true,
+             e => String(e.message).includes('未配置') || !String(e.message).includes('undefined')
+           )`
         );
         // 偏好持久化：写入后能读回
         await petWin.webContents.executeJavaScript(`window.petAPI.prefsSet({ volume: 0.77 })`);

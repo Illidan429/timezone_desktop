@@ -880,9 +880,11 @@
       checks.hitChar = stage.hitTest({ x: cx, y: cy });
       checks.hitEmpty = stage.hitTest({ x: window.screenX + 4, y: window.screenY + 4 }) === false;
       checks.dbg = `screenX=${window.screenX},screenY=${window.screenY},rect=${JSON.stringify(stage.el.stack.getBoundingClientRect())},outerW=${window.outerWidth}`;
-      stage.applyPose("happy");
-      checks.poseSwitch = stage.poseId === "happy" && stage.el.pose.style.backgroundImage.includes("blob:");
-      stage.applyPose("idle");
+      const poses = stage.m.poses || [];
+      const target = poses[poses.length - 1];
+      stage.applyPose(target.id);
+      checks.poseSwitch = stage.poseId === target.id && stage.el.pose.style.backgroundImage.includes("blob:");
+      stage.applyPose(poses[0].id);
       ui.setTheme("night");
       checks.themeNight = document.body.classList.contains("night");
       ui.setTheme("day");

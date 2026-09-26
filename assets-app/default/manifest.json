@@ -1,5 +1,5 @@
 {
-  "name": "占位酱",
+  "name": "白发粉衣桌宠角色",
   "version": 1,
   "canvas": {
     "width": 600,
@@ -9,29 +9,24 @@
     {
       "id": "idle",
       "name": "待机",
-      "src": "poses/idle.svg"
-    },
-    {
-      "id": "happy",
-      "name": "开心",
-      "src": "poses/happy.svg"
+      "src": "poses/idle.png"
     }
   ],
   "gaze": {
     "pose": "idle",
     "cols": 3,
     "rows": 3,
-    "srcPattern": "gaze/g{c}r{r}.svg"
+    "srcPattern": "gaze/g{c}r{r}.png"
   },
   "blink": {
     "frames": [
       {
         "level": 1,
-        "src": "blink/half.svg"
+        "src": "blink/half.png"
       },
       {
         "level": 2,
-        "src": "blink/closed.svg"
+        "src": "blink/closed.png"
       }
     ]
   },
@@ -39,11 +34,11 @@
     "frames": [
       {
         "level": 1,
-        "src": "mouth/half.svg"
+        "src": "mouth/half.png"
       },
       {
         "level": 2,
-        "src": "mouth/open.svg"
+        "src": "mouth/open.png"
       }
     ]
   },

@@ -188,10 +188,12 @@ window.__PET_SMOKE_CHECKS__ = async function () {
     checks.hitEmpty = stage.hitTest({ x: window.screenX + 4, y: window.screenY + 4 }) === false;
     checks.dbg = `screenX=${window.screenX},screenY=${window.screenY},rect=${JSON.stringify(stage.el.stack.getBoundingClientRect())},outerW=${window.outerWidth}`;
 
-    // 6. 姿态切换（图层走 background-image，断言样式与内部状态）
-    stage.applyPose('happy');
-    checks.poseSwitch = stage.poseId === 'happy' && stage.el.pose.style.backgroundImage.includes('blob:');
-    stage.applyPose('idle');
+    // 6. 姿态切换（素材包姿态数不定：有多个则切到最后一个，仅一个则验证重载）
+    const poses = stage.m.poses || [];
+    const target = poses[poses.length - 1];
+    stage.applyPose(target.id);
+    checks.poseSwitch = stage.poseId === target.id && stage.el.pose.style.backgroundImage.includes('blob:');
+    stage.applyPose(poses[0].id);
 
     // 7. 主题切换
     ui.setTheme('night');
