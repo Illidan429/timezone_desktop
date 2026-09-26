@@ -144,6 +144,13 @@ function rebuildTrayMenu() {
     { label: '打开设置', click: () => createSettingsWindow() },
     { type: 'separator' },
     {
+      label: '显示操作栏', type: 'checkbox', checked: prefs.controlsVisible !== false,
+      click: (item) => {
+        updatePrefs({ controlsVisible: item.checked });
+        petWin?.webContents.send('prefs-changed', sanitizedView().prefs);
+      }
+    },
+    {
       label: '窗口置顶', type: 'checkbox', checked: !!prefs.topmost,
       click: (item) => {
         updatePrefs({ topmost: item.checked });

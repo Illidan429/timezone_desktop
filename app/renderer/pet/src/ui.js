@@ -16,6 +16,8 @@ export class Ui {
       fx: document.getElementById('fxCanvas')
     };
     this.themes = manifest?.themes || {};
+    this.controlsVisible = true;
+    this.el.hideBar = document.getElementById('hideBar');
     this.nightStars = 0;
     this._fadeTimer = null;
     this.el.close.addEventListener('click', () => this.clearSubtitle());
@@ -68,8 +70,16 @@ export class Ui {
     this.el.talkBtn.disabled = state === 'recognizing';
   }
 
+  // 操作栏整体开关（用户偏好）：隐藏时 display:none，不占命中区域
+  setControlsVisible(v) {
+    this.controlsVisible = v;
+    this.el.controls.style.display = v ? 'flex' : 'none';
+    if (v) this.el.controls.classList.remove('hidden');
+  }
+
   // 控制条自动显隐：光标在窗口内常显，离开 5 秒后淡出
   updateControlsVisibility(cursorScreen) {
+    if (this.controlsVisible === false) return;
     const inside = cursorScreen
       && cursorScreen.x >= window.screenX && cursorScreen.x <= window.screenX + window.outerWidth
       && cursorScreen.y >= window.screenY && cursorScreen.y <= window.screenY + window.outerHeight;

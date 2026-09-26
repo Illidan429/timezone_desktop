@@ -15,6 +15,7 @@ const DEFAULTS = {
     pose: 'idle',
     mode: 'push',
     volume: 0.9,
+    controlsVisible: true,
     petBounds: null
   }
 };

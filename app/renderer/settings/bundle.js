@@ -50,6 +50,7 @@
       theme: document.getElementById("theme").value,
       mode: document.getElementById("mode").value,
       topmost: document.getElementById("topmost").checked,
+      controlsVisible: document.getElementById("controlsVisible").checked,
       volume: Number(document.getElementById("volume").value) / 100
     };
   }
@@ -57,6 +58,7 @@
     document.getElementById("theme").value = prefs.theme || "day";
     document.getElementById("mode").value = prefs.mode || "push";
     document.getElementById("topmost").checked = !!prefs.topmost;
+    document.getElementById("controlsVisible").checked = prefs.controlsVisible !== false;
     document.getElementById("volume").value = Math.round((prefs.volume ?? 0.9) * 100);
     document.getElementById("volumeVal").textContent = Math.round((prefs.volume ?? 0.9) * 100) + "%";
   }

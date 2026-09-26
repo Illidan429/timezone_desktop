@@ -70,6 +70,7 @@ function applyPrefs(prefs = {}) {
   if (prefs.theme) ui.setTheme(prefs.theme);
   if (prefs.pose) stage.applyPose(prefs.pose);
   if (typeof prefs.volume === 'number') player.setVolume(prefs.volume);
+  if (prefs.controlsVisible !== undefined) ui.setControlsVisible(!!prefs.controlsVisible);
   if (prefs.mode && pipeline && prefs.mode !== pipeline.mode) {
     pipeline.mode = prefs.mode;
     pipeline.setMode(prefs.mode);
@@ -97,6 +98,7 @@ function wireControls() {
   send.addEventListener('click', submit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
   settings.addEventListener('click', () => window.petAPI.windowOpenSettings());
+  ui.el.hideBar.addEventListener('click', () => window.petAPI.prefsSet({ controlsVisible: false }));
   ui.setMode(/** @type {any} */(pipeline.mode) && modeBtn.textContent, pipeline.mode === CHAT_MODES.TEXT);
 }
 
