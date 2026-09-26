@@ -6,8 +6,6 @@ midori-companion-avatar-main.zip
 node_modules/
 dist/
 
-.tmp-brief-assets/
-
 # 应用运行时本地数据（正式素材在此目录时不应入库）
 assets-app/**/CREDITS.md.bak
 *.log
