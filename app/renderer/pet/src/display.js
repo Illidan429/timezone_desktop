@@ -67,6 +67,10 @@ export class Stage {
     this._setLayer(this.el.gaze, gazeImg);
     // 视线帧是完整角色帧且带身体微动：显示视线层时必须隐藏底图，否则两帧轮廓叠影
     this._setLayer(this.el.pose, gazeImg ? null : this.currentPoseImg);
+    // 视线方向变化时，眨眼/口型覆盖层必须立即换到新方向的对应帧，
+    // 否则旧方向的闭眼/张嘴会叠在新方向的睁眼画面上（眨眼中移动鼠标的重影）
+    if (this.blinkLevel) this.setBlinkLevel(this.blinkLevel);
+    if (this.mouthLevel) this.setMouthLevel(this.mouthLevel);
   }
 
   gazeAppliesToPose() {

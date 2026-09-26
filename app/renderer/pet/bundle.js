@@ -146,6 +146,8 @@
       }
       this._setLayer(this.el.gaze, gazeImg);
       this._setLayer(this.el.pose, gazeImg ? null : this.currentPoseImg);
+      if (this.blinkLevel) this.setBlinkLevel(this.blinkLevel);
+      if (this.mouthLevel) this.setMouthLevel(this.mouthLevel);
     }
     gazeAppliesToPose() {
       return !this.m.gaze?.pose || this.m.gaze.pose === this.poseId;
