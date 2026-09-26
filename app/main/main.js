@@ -113,18 +113,6 @@ function createSettingsWindow() {
   settingsWin.on('closed', () => { settingsWin = null; });
 }
 
-// 点击穿透模式：整窗忽略鼠标（角色也穿透），悬停检测由渲染端驱动透明度
-function applyPassthrough() {
-  const on = !!loadSettings().prefs.passthrough;
-  if (!petWin) return;
-  if (on) {
-    petWin.setIgnoreMouseEvents(true, { forward: true });
-  } else {
-    petWin.setIgnoreMouseEvents(false);
-    petWin.setOpacity(1);
-  }
-}
-
 function scheduleSaveBounds() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
@@ -143,7 +131,12 @@ function trayIcon() {
 function createTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip('桌宠伴侣');
-  tray.on('click', () => { if (petWin) petWin.isVisible() ? petWin.hide() : petWin.show(); });
+  // 左键单击始终显示（避免找桌宠时误点托盘把角色藏起来的陷阱）；显式隐藏走菜单项
+  tray.on('click', () => {
+    if (!petWin) return;
+    petWin.show();
+    petWin.focus();
+  });
   rebuildTrayMenu();
 }
 
@@ -155,14 +148,6 @@ function rebuildTrayMenu() {
     { label: '显示 / 隐藏角色', click: () => { if (petWin) petWin.isVisible() ? petWin.hide() : petWin.show(); } },
     { label: '打开设置', click: () => createSettingsWindow() },
     { type: 'separator' },
-    {
-      label: '点击穿透（悬停半透明）', type: 'checkbox', checked: !!prefs.passthrough,
-      click: (item) => {
-        updatePrefs({ passthrough: item.checked });
-        applyPassthrough();
-        petWin?.webContents.send('prefs-changed', sanitizedView().prefs);
-      }
-    },
     {
       label: '显示操作栏', type: 'checkbox', checked: prefs.controlsVisible !== false,
       click: (item) => {
@@ -243,7 +228,6 @@ function registerIpc() {
   ipcMain.handle('settings:save', (_e, payload) => {
     saveSettings(payload);
     rebuildTrayMenu();
-    applyPassthrough();
     const view = sanitizedView();
     petWin?.webContents.send('prefs-changed', view.prefs);
     // 同步完整配置视图（含各 API 是否已配置），渲染端即时刷新语音可用状态
@@ -255,7 +239,6 @@ function registerIpc() {
   ipcMain.handle('prefs:set', (_e, patch) => {
     updatePrefs(patch);
     rebuildTrayMenu();
-    applyPassthrough();
     petWin?.webContents.send('prefs-changed', sanitizedView().prefs);
     return loadSettings().prefs;
   });
@@ -293,9 +276,6 @@ function registerIpc() {
   });
   ipcMain.handle('window:setIgnoreMouse', (_e, ignore) => {
     petWin?.setIgnoreMouseEvents(!!ignore, ignore ? { forward: true } : {});
-  });
-  ipcMain.handle('window:setOpacity', (_e, v) => {
-    petWin?.setOpacity(Math.max(0.05, Math.min(1, Number(v) || 1)));
   });
   ipcMain.handle('window:openSettings', () => createSettingsWindow());
   ipcMain.handle('window:hide', () => petWin?.hide());
@@ -381,7 +361,6 @@ if (!gotLock) {
     registerAppProtocol();
     registerIpc();
     createPetWindow();
-    applyPassthrough();
     createTray();
     startCursorLoop();
     if (IS_SMOKE) setTimeout(runSmoke, 1500);
