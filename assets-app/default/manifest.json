@@ -1,5 +1,5 @@
 {
-  "name": "白发粉衣桌宠角色",
+  "name": "桌宠少女（参考图角色）",
   "version": 1,
   "canvas": {
     "width": 600,
@@ -19,26 +19,36 @@
     "srcPattern": "gaze/g{c}r{r}.png"
   },
   "blink": {
+    "perGaze": true,
+    "patterns": {
+      "1": "blink/g{c}r{r}_half.png",
+      "2": "blink/g{c}r{r}.png"
+    },
     "frames": [
       {
-        "level": 1,
-        "src": "blink/half.png"
+        "level": 2,
+        "src": "blink/g1r1.png"
       },
       {
-        "level": 2,
-        "src": "blink/closed.png"
+        "level": 1,
+        "src": "blink/g1r1_half.png"
       }
     ]
   },
   "mouth": {
+    "perGaze": true,
+    "patterns": {
+      "1": "mouth/g{c}r{r}_half.png",
+      "2": "mouth/g{c}r{r}.png"
+    },
     "frames": [
       {
-        "level": 1,
-        "src": "mouth/half.png"
+        "level": 2,
+        "src": "mouth/g1r1.png"
       },
       {
-        "level": 2,
-        "src": "mouth/open.png"
+        "level": 1,
+        "src": "mouth/g1r1_half.png"
       }
     ]
   },
