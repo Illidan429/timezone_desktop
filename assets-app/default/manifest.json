@@ -16,7 +16,11 @@
     "pose": "idle",
     "cols": 3,
     "rows": 3,
-    "srcPattern": "gaze/g{c}r{r}.png"
+    "srcPattern": "gaze/g{c}r{r}.png",
+    "overlayShift": {
+      "x": 6,
+      "y": 4
+    }
   },
   "blink": {
     "frames": [

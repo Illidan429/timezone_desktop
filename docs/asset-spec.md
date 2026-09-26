@@ -43,7 +43,8 @@ default/
   "gaze": {
     "pose": "idle",              // 方向帧基于哪个姿态录制
     "cols": 3, "rows": 3,        // 方向网格：3×3 或 5×5
-    "srcPattern": "gaze/g{c}r{r}.png"  // {c}=列(左→右) {r}=行(上→下)
+    "srcPattern": "gaze/g{c}r{r}.png",  // {c}=列(左→右) {r}=行(上→下)
+    "overlayShift": { "x": 6, "y": 4 }  // 可选：方向帧的头部位移量（px/格），眨眼/口型覆盖层会跟随
   },
   "blink": { "frames": [
     { "level": 1, "src": "blink/half.png" },    // 1=半闭

@@ -95,6 +95,8 @@
       this.mouthEnabled = Boolean(manifest.mouth?.frames?.length);
       this.gazeCell = null;
       this.currentPoseImg = null;
+      const os = manifest.gaze?.overlayShift;
+      this.overlayShift = os ? { x: Number(os.x) || 0, y: Number(os.y) || 0 } : { x: 0, y: 0 };
       this.gazeOffset = [0, 0];
       this.blinkLevel = 0;
       this.mouthLevel = 0;
@@ -137,6 +139,11 @@
       }
       this._setLayer(this.el.gaze, gazeImg);
       this._setLayer(this.el.pose, gazeImg ? null : this.currentPoseImg);
+      const dx = gazeImg ? (cell.c - (this.m.gaze.cols - 1) / 2) * this.overlayShift.x : 0;
+      const dy = gazeImg ? (cell.r - (this.m.gaze.rows - 1) / 2) * this.overlayShift.y : 0;
+      const shift = `translate(${dx}px, ${dy}px)`;
+      this.el.blink.style.translate = shift;
+      this.el.mouth.style.translate = shift;
     }
     gazeAppliesToPose() {
       return !this.m.gaze?.pose || this.m.gaze.pose === this.poseId;
