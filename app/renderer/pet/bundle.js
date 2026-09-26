@@ -877,6 +877,8 @@
   var ui;
   var lastCursor = null;
   var ignoreMouse = true;
+  var passthrough = false;
+  var hoverOpacityOn = false;
   var dragging = null;
   async function boot() {
     try {
@@ -929,6 +931,16 @@
     if (prefs.pose) stage.applyPose(prefs.pose);
     if (typeof prefs.volume === "number") player.setVolume(prefs.volume);
     if (prefs.controlsVisible !== void 0) ui.setControlsVisible(!!prefs.controlsVisible);
+    if (prefs.passthrough !== void 0) {
+      passthrough = !!prefs.passthrough;
+      hoverOpacityOn = false;
+      if (passthrough) {
+        dragging = null;
+        window.petAPI.windowSetIgnoreMouse(true);
+      } else {
+        window.petAPI.windowSetOpacity(1);
+      }
+    }
     if (prefs.mode && pipeline && prefs.mode !== pipeline.mode) {
       pipeline.mode = prefs.mode;
       pipeline.setMode(prefs.mode);
@@ -967,6 +979,16 @@
   function wireCursorAndDrag() {
     window.petAPI.onCursor((pt) => {
       lastCursor = pt;
+      if (passthrough) {
+        const hover = stage.hitTest(pt);
+        if (hover !== hoverOpacityOn) {
+          hoverOpacityOn = hover;
+          window.petAPI.windowSetOpacity(hover ? 0.4 : 1);
+        }
+        stage.tick(1 / 60, pt);
+        ui.updateControlsVisibility(pt);
+        return;
+      }
       const hit = stage.hitTest(pt);
       if (hit !== !ignoreMouse || hit && ignoreMouse) {
         const shouldIgnore = !hit && !dragging;

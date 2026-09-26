@@ -14,6 +14,8 @@ const state = window.__PET_STATE__;
 let stage, blinker, player, recorder, pipeline, ui;
 let lastCursor = null;
 let ignoreMouse = true;
+let passthrough = false;
+let hoverOpacityOn = false;
 let dragging = null; // {startX,startY,lastX,lastY,moved}
 
 async function boot() {
@@ -73,6 +75,16 @@ function applyPrefs(prefs = {}) {
   if (prefs.pose) stage.applyPose(prefs.pose);
   if (typeof prefs.volume === 'number') player.setVolume(prefs.volume);
   if (prefs.controlsVisible !== undefined) ui.setControlsVisible(!!prefs.controlsVisible);
+  if (prefs.passthrough !== undefined) {
+    passthrough = !!prefs.passthrough;
+    hoverOpacityOn = false;
+    if (passthrough) {
+      dragging = null;
+      window.petAPI.windowSetIgnoreMouse(true);
+    } else {
+      window.petAPI.windowSetOpacity(1);
+    }
+  }
   if (prefs.mode && pipeline && prefs.mode !== pipeline.mode) {
     pipeline.mode = prefs.mode;
     pipeline.setMode(prefs.mode);
@@ -111,6 +123,17 @@ function wireControls() {
 function wireCursorAndDrag() {
   window.petAPI.onCursor(pt => {
     lastCursor = pt;
+    // 点击穿透模式：整窗穿透，悬停在角色区域时半透明，移开恢复
+    if (passthrough) {
+      const hover = stage.hitTest(pt);
+      if (hover !== hoverOpacityOn) {
+        hoverOpacityOn = hover;
+        window.petAPI.windowSetOpacity(hover ? 0.4 : 1);
+      }
+      stage.tick(1 / 60, pt);
+      ui.updateControlsVisibility(pt);
+      return;
+    }
     // 穿透切换：仅状态变化时调用
     const hit = stage.hitTest(pt);
     if (hit !== !ignoreMouse || (hit && ignoreMouse)) {

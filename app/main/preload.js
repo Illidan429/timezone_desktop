@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('petAPI', {
 
   windowMoveBy: (dx, dy) => ipcRenderer.invoke('window:moveBy', dx, dy),
   windowSetIgnoreMouse: (ignore) => ipcRenderer.invoke('window:setIgnoreMouse', ignore),
+  windowSetOpacity: (v) => ipcRenderer.invoke('window:setOpacity', v),
   windowOpenSettings: () => ipcRenderer.invoke('window:openSettings'),
   windowHide: () => ipcRenderer.invoke('window:hide'),
   appQuit: () => ipcRenderer.invoke('app:quit'),
