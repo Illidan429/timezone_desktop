@@ -56,6 +56,15 @@
     }
     for (const f of m.blink?.frames || []) urls.push(assetUrl(f.src));
     for (const f of m.mouth?.frames || []) urls.push(assetUrl(f.src));
+    for (const [group, g] of [["blink", m.blink], ["mouth", m.mouth]]) {
+      if (g?.perGaze && g.patterns) {
+        const cols = m.gaze?.cols || 3, rows = m.gaze?.rows || 3;
+        for (const pat of Object.values(g.patterns))
+          for (let r = 0; r < rows; r++)
+            for (let c = 0; c < cols; c++)
+              urls.push(assetUrl(pat.replace("{c}", c).replace("{r}", r)));
+      }
+    }
     return urls;
   }
 
@@ -95,8 +104,6 @@
       this.mouthEnabled = Boolean(manifest.mouth?.frames?.length);
       this.gazeCell = null;
       this.currentPoseImg = null;
-      const os = manifest.gaze?.overlayShift;
-      this.overlayShift = os ? { x: Number(os.x) || 0, y: Number(os.y) || 0 } : { x: 0, y: 0 };
       this.gazeOffset = [0, 0];
       this.blinkLevel = 0;
       this.mouthLevel = 0;
@@ -139,11 +146,6 @@
       }
       this._setLayer(this.el.gaze, gazeImg);
       this._setLayer(this.el.pose, gazeImg ? null : this.currentPoseImg);
-      const dx = gazeImg ? (cell.c - (this.m.gaze.cols - 1) / 2) * this.overlayShift.x : 0;
-      const dy = gazeImg ? (cell.r - (this.m.gaze.rows - 1) / 2) * this.overlayShift.y : 0;
-      const shift = `translate(${dx}px, ${dy}px)`;
-      this.el.blink.style.translate = shift;
-      this.el.mouth.style.translate = shift;
     }
     gazeAppliesToPose() {
       return !this.m.gaze?.pose || this.m.gaze.pose === this.poseId;
@@ -154,6 +156,18 @@
         this._setLayer(this.el.blink, null);
         return;
       }
+      if (this.m.blink.perGaze && this.gazeCell && this.gazeAppliesToPose()) {
+        const p = this.m.blink.patterns || {};
+        const pat = p[String(level)];
+        if (pat) {
+          const src = pat.replace("{c}", this.gazeCell.c).replace("{r}", this.gazeCell.r);
+          const img = this.img(src);
+          if (img) {
+            this._setLayer(this.el.blink, img);
+            return;
+          }
+        }
+      }
       const frame = (this.m.blink.frames || []).find((f) => f.level === level);
       this._setLayer(this.el.blink, frame && this.img(frame.src));
     }
@@ -162,6 +176,17 @@
       if (!this.mouthEnabled || !level) {
         this._setLayer(this.el.mouth, null);
         return;
+      }
+      if (this.m.mouth.perGaze && this.gazeCell && this.gazeAppliesToPose()) {
+        const pat = (this.m.mouth.patterns || {})[String(level)];
+        if (pat) {
+          const src = pat.replace("{c}", this.gazeCell.c).replace("{r}", this.gazeCell.r);
+          const img = this.img(src);
+          if (img) {
+            this._setLayer(this.el.mouth, img);
+            return;
+          }
+        }
       }
       const frame = (this.m.mouth.frames || []).find((f) => f.level === level);
       this._setLayer(this.el.mouth, frame && this.img(frame.src));

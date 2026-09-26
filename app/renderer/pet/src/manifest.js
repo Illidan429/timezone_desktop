@@ -62,5 +62,15 @@ export function collectImageUrls(m) {
   }
   for (const f of m.blink?.frames || []) urls.push(assetUrl(f.src));
   for (const f of m.mouth?.frames || []) urls.push(assetUrl(f.src));
+  // 每方向眨眼/口型帧
+  for (const [group, g] of [['blink', m.blink], ['mouth', m.mouth]]) {
+    if (g?.perGaze && g.patterns) {
+      const cols = m.gaze?.cols || 3, rows = m.gaze?.rows || 3;
+      for (const pat of Object.values(g.patterns))
+        for (let r = 0; r < rows; r++)
+          for (let c = 0; c < cols; c++)
+            urls.push(assetUrl(pat.replace('{c}', c).replace('{r}', r)));
+    }
+  }
   return urls;
 }

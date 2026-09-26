@@ -43,17 +43,26 @@ default/
   "gaze": {
     "pose": "idle",              // 方向帧基于哪个姿态录制
     "cols": 3, "rows": 3,        // 方向网格：3×3 或 5×5
-    "srcPattern": "gaze/g{c}r{r}.png",  // {c}=列(左→右) {r}=行(上→下)
-    "overlayShift": { "x": 6, "y": 4 }  // 可选：方向帧的头部位移量（px/格），眨眼/口型覆盖层会跟随
+    "srcPattern": "gaze/g{c}r{r}.png"  // {c}=列(左→右) {r}=行(上→下)
   },
-  "blink": { "frames": [
-    { "level": 1, "src": "blink/half.png" },    // 1=半闭
-    { "level": 2, "src": "blink/closed.png" }   // 2=全闭
-  ]},
-  "mouth": { "frames": [
-    { "level": 1, "src": "mouth/half.png" },    // 1=半开
-    { "level": 2, "src": "mouth/open.png" }     // 2=全开
-  ]},
+  // 方式A（基础）：全局帧，适用于无头部微动的素材包
+  // 方式B（推荐，视线帧带头部微动时必须）：每方向一套眨眼/口型帧
+  "blink": {
+    "perGaze": true,                            // 启用每方向模式
+    "patterns": {
+      "1": "blink/g{c}r{r}_half.png",           // 1=半闭（可选，缺图自动回退全局帧）
+      "2": "blink/g{c}r{r}.png"                 // 2=全闭
+    }
+  },
+  "mouth": {
+    "perGaze": true,
+    "patterns": {
+      "1": "mouth/g{c}r{r}_half.png",           // 1=半开（可选）
+      "2": "mouth/g{c}r{r}.png"                 // 2=全开
+    }
+  },
+  // 方式A 写法（与方式B 二选一或并存作为回退）：
+  // "blink": { "frames": [ { "level": 1, "src": "blink/half.png" }, { "level": 2, "src": "blink/closed.png" } ] },
   "themes": {
     "day":   { "name": "日间", "starCount": 0 },
     "night": { "name": "夜间", "starCount": 60 }  // 夜间星光数量

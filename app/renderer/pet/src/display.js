@@ -20,9 +20,6 @@ export class Stage {
     this.mouthEnabled = Boolean(manifest.mouth?.frames?.length);
     this.gazeCell = null;      // {c,r}
     this.currentPoseImg = null; // 当前姿态的底图（视线层显示时底图隐藏）
-    // 视线帧若带头部位移（manifest.gaze.overlayShift），眨眼/口型覆盖层需跟随平移，否则盖不到五官
-    const os = manifest.gaze?.overlayShift;
-    this.overlayShift = os ? { x: Number(os.x) || 0, y: Number(os.y) || 0 } : { x: 0, y: 0 };
     this.gazeOffset = [0, 0];  // 微位移目标
     this.blinkLevel = 0;       // 0开 1半 2闭
     this.mouthLevel = 0;       // 0闭 1半 2全
@@ -70,12 +67,6 @@ export class Stage {
     this._setLayer(this.el.gaze, gazeImg);
     // 视线帧是完整角色帧且带身体微动：显示视线层时必须隐藏底图，否则两帧轮廓叠影
     this._setLayer(this.el.pose, gazeImg ? null : this.currentPoseImg);
-    // 覆盖层跟随头部位移：仅视线层激活时偏移，否则覆盖层与底图天然对齐
-    const dx = gazeImg ? (cell.c - (this.m.gaze.cols - 1) / 2) * this.overlayShift.x : 0;
-    const dy = gazeImg ? (cell.r - (this.m.gaze.rows - 1) / 2) * this.overlayShift.y : 0;
-    const shift = `translate(${dx}px, ${dy}px)`;
-    this.el.blink.style.translate = shift;
-    this.el.mouth.style.translate = shift;
   }
 
   gazeAppliesToPose() {
@@ -86,6 +77,16 @@ export class Stage {
   setBlinkLevel(level) {
     this.blinkLevel = level;
     if (!this.blinkEnabled || !level) { this._setLayer(this.el.blink, null); return; }
+    // 每方向眨眼帧（perGaze）优先：按当前视线格位取对应闭眼帧；缺图回退全局帧
+    if (this.m.blink.perGaze && this.gazeCell && this.gazeAppliesToPose()) {
+      const p = this.m.blink.patterns || {};
+      const pat = p[String(level)];
+      if (pat) {
+        const src = pat.replace('{c}', this.gazeCell.c).replace('{r}', this.gazeCell.r);
+        const img = this.img(src);
+        if (img) { this._setLayer(this.el.blink, img); return; }
+      }
+    }
     const frame = (this.m.blink.frames || []).find(f => f.level === level);
     this._setLayer(this.el.blink, frame && this.img(frame.src));
   }
@@ -93,6 +94,15 @@ export class Stage {
   setMouthLevel(level) {
     this.mouthLevel = level;
     if (!this.mouthEnabled || !level) { this._setLayer(this.el.mouth, null); return; }
+    // 每方向口型帧（perGaze）优先：按当前视线格位取对应口型帧；缺图回退全局帧
+    if (this.m.mouth.perGaze && this.gazeCell && this.gazeAppliesToPose()) {
+      const pat = (this.m.mouth.patterns || {})[String(level)];
+      if (pat) {
+        const src = pat.replace('{c}', this.gazeCell.c).replace('{r}', this.gazeCell.r);
+        const img = this.img(src);
+        if (img) { this._setLayer(this.el.mouth, img); return; }
+      }
+    }
     const frame = (this.m.mouth.frames || []).find(f => f.level === level);
     this._setLayer(this.el.mouth, frame && this.img(frame.src));
   }
