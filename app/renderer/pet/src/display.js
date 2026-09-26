@@ -23,15 +23,62 @@ export class Stage {
     this.gazeOffset = [0, 0];  // 微位移目标
     this.blinkLevel = 0;       // 0开 1半 2闭
     this.mouthLevel = 0;       // 0闭 1半 2全
+    this.bottomOffsets = new Map(); // url -> 画布像素的垂直对齐偏移（底缘归位）
+    this._bottomScale = 1;     // 画布像素 → CSS 像素的换算
   }
 
   img(url) { return this.images.get(assetUrl(url)); }
+
+  // 底缘归位：测每张帧最低不透明行，以默认立绘为基准计算垂直偏移，
+  // 消除各帧生成时裙摆下缘的细微垂直偏差（切方向时角色不再上下跳动）
+  async normalizeBottoms() {
+    const cw = this.m.canvas?.width, ch = this.m.canvas?.height;
+    if (!cw || !ch) return;
+    const cv = document.createElement('canvas');
+    cv.width = cw; cv.height = ch;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    const bottomY = (img) => {
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, 0, 0, cw, ch);
+      const a = ctx.getImageData(0, 0, cw, ch).data;
+      for (let y = ch - 1; y >= 0; y--) {
+        for (let x = 0; x < cw; x++) {
+          if (a[(y * cw + x) * 4 + 3] > 16) return y;
+        }
+      }
+      return ch;
+    };
+    const poseUrl = this.m.poses?.[0]?.src && assetUrl(this.m.poses[0].src);
+    const poseImg = poseUrl && this.images.get(poseUrl);
+    if (!poseImg) return;
+    const baseline = bottomY(poseImg);
+    const urls = [...this.images.keys()];
+    for (const url of urls) {
+      const img = this.images.get(url);
+      if (!img) continue;
+      this.bottomOffsets.set(url, baseline - bottomY(img));
+    }
+    this.bottomOffsets.set(poseUrl, 0);
+  }
+
+  // 应用某一帧的垂直对齐偏移（覆盖层与所属方向帧同偏移，保持叠合关系）
+  _applyBottomAlign(el, url) {
+    const off = (this.bottomOffsets.get(url) || 0) * this._bottomScale;
+    el.style.translate = `0px ${off}px`;
+  }
+
+  _updateBottomScale() {
+    const cw = this.m.canvas?.width;
+    if (!cw) return;
+    this._bottomScale = this.el.stack.getBoundingClientRect().width / cw;
+  }
 
   applyPose(poseId) {
     const pose = (this.m.poses || []).find(p => p.id === poseId) || this.m.poses?.[0];
     if (!pose) return;
     this.poseId = pose.id;
     this.currentPoseImg = this.img(pose.src) || null;
+    this.currentPoseUrl = this.currentPoseImg ? assetUrl(pose.src) : null;
     // 重新评估视线层：姿态变化后视线帧可能不再适用（或恢复适用），统一在 setGaze 里同步底图
     this.setGaze(this.gazeCell);
   }
@@ -59,14 +106,20 @@ export class Stage {
 
   setGaze(cell) {
     this.gazeCell = cell;
-    let gazeImg = null;
+    let gazeImg = null, gazeUrl = null;
     if (this.gazeEnabled && cell && this.gazeAppliesToPose()) {
-      const src = this.m.gaze.srcPattern.replace('{c}', cell.c).replace('{r}', cell.r);
-      gazeImg = this.img(src);
+      gazeUrl = assetUrl(this.m.gaze.srcPattern.replace('{c}', cell.c).replace('{r}', cell.r));
+      gazeImg = this.images.get(gazeUrl) || null;
     }
     this._setLayer(this.el.gaze, gazeImg);
     // 视线帧是完整角色帧且带身体微动：显示视线层时必须隐藏底图，否则两帧轮廓叠影
     this._setLayer(this.el.pose, gazeImg ? null : this.currentPoseImg);
+    // 底缘归位：视线帧与其同方向覆盖层共用同一偏移，底图用自身偏移（正前帧即基准）
+    this._updateBottomScale();
+    this._applyBottomAlign(this.el.gaze, gazeUrl);
+    this._applyBottomAlign(this.el.blink, gazeUrl);
+    this._applyBottomAlign(this.el.mouth, gazeUrl);
+    this._applyBottomAlign(this.el.pose, gazeImg ? null : this.currentPoseUrl);
     // 视线方向变化时，眨眼/口型覆盖层必须立即换到新方向的对应帧，
     // 否则旧方向的闭眼/张嘴会叠在新方向的睁眼画面上（眨眼中移动鼠标的重影）
     if (this.blinkLevel) this.setBlinkLevel(this.blinkLevel);

@@ -36,6 +36,8 @@ async function boot() {
     }
     // 3. 模块装配
     stage = new Stage(mres.manifest, images);
+    await stage.normalizeBottoms();
+    stage._updateBottomScale();
     blinker = new BlinkScheduler(stage);
     player = new Player();
     recorder = new Recorder();
