@@ -1,0 +1,182 @@
+[
+  {
+    "file": "blink/g0r0.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "blink/g0r0_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "mouth/g0r0.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "mouth/g0r0_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "blink/g1r0.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "blink/g1r0_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "mouth/g1r0.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "mouth/g1r0_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "blink/g2r0.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "blink/g2r0_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "mouth/g2r0.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "mouth/g2r0_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "blink/g0r1.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "blink/g0r1_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "mouth/g0r1.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "mouth/g0r1_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "blink/g1r1.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "blink/g1r1_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "mouth/g1r1.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "mouth/g1r1_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "blink/g2r1.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "blink/g2r1_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "mouth/g2r1.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "mouth/g2r1_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "blink/g0r2.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "blink/g0r2_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "mouth/g0r2.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "mouth/g0r2_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "blink/g1r2.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "blink/g1r2_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "mouth/g1r2.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "mouth/g1r2_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "blink/g2r2.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "blink/g2r2_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "blink"
+  },
+  {
+    "file": "mouth/g2r2.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  },
+  {
+    "file": "mouth/g2r2_half.png",
+    "outside_mask_changed_pixels": 0,
+    "allowed_region": "mouth"
+  }
+]
