@@ -56,7 +56,7 @@ export class ChatPipeline {
     const gen = ++this._gen;
     this.ui.showUser(`${sourceLabel}：${text}`);
     this.setState('thinking');
-    this.ui.status('思考中…');
+    this.ui.startThinking();
     let reply;
     try {
       ({ text: reply } = await window.petAPI.chatLlm(text));
@@ -66,7 +66,8 @@ export class ChatPipeline {
       return;
     }
     if (gen !== this._gen) return; // 已被打断
-    this.ui.showReply(reply);
+    this.ui.stopThinking();
+    this.ui.typeReply(reply);
     this.setState('speaking');
     this.ui.status('');
     try {
@@ -80,10 +81,12 @@ export class ChatPipeline {
     }
   }
 
-  // 点击角色或新输入时打断：停止播放、清队列、终止外部请求
+  // 点击角色或新输入时打断：停止播放、清队列、终止外部请求与界面动画
   interrupt() {
     const wasSpeaking = this.state === 'speaking';
     this._gen++;
+    this.ui.stopThinking();
+    this.ui.stopTypewriter();
     this.player.stopAndClear();
     window.petAPI.chatCancel();
     this.setState('idle');
@@ -93,6 +96,8 @@ export class ChatPipeline {
   _interruptIfSpeaking() {
     if (this.state === 'speaking' || this.state === 'thinking') {
       this._gen++;
+      this.ui.stopThinking();
+      this.ui.stopTypewriter();
       this.player.stopAndClear();
       window.petAPI.chatCancel();
     }

@@ -1,4 +1,11 @@
-// 界面辅助：字幕、控制条显隐、夜间星光
+// 界面辅助：字幕（思考动画/打字机/自动淡出）、控制条显隐、夜间星光
+// 聊天交互逻辑参照 reference/midori-companion-avatar-main 的 app.js 实现
+
+const THINKING_DOT_INTERVAL_MS = 400;   // 思考点跳动间隔
+const TYPE_INTERVAL_MS = 20;            // 打字机逐字间隔
+const REPLY_RETENTION_MS = 30_000;      // 回复完成后保留时长
+const REPLY_FADE_MS = 800;              // 淡出时长
+
 export class Ui {
   constructor(manifest) {
     this.el = {
@@ -20,6 +27,12 @@ export class Ui {
     this.el.hideBar = document.getElementById('hideBar');
     this.nightStars = 0;
     this._fadeTimer = null;
+    this._thinkingTimer = null;
+    this._thinkingDots = 0;
+    this._typeTimer = null;
+    this._typeUnits = [];
+    this._typeIndex = 0;
+    this._retentionTimer = null;
     this.el.close.addEventListener('click', () => this.clearSubtitle());
     this._fxLoop = this._fxLoop.bind(this);
     requestAnimationFrame(this._fxLoop);
@@ -46,7 +59,63 @@ export class Ui {
     if (text) this.el.subtitle.style.display = 'block';
   }
 
+  // 思考动画：状态行点点跳动（参照参考项目 startMidoriReplyThinking）
+  startThinking(prefix = '思考中') {
+    this.stopThinking();
+    this._thinkingDots = 0;
+    const tick = () => {
+      this.status(`${prefix}${'.'.repeat(this._thinkingDots + 1)}`);
+      this._thinkingDots = (this._thinkingDots + 1) % 3;
+      this._thinkingTimer = setTimeout(tick, THINKING_DOT_INTERVAL_MS);
+    };
+    tick();
+  }
+
+  stopThinking() {
+    if (this._thinkingTimer) clearTimeout(this._thinkingTimer);
+    this._thinkingTimer = null;
+  }
+
+  // 打字机：逐字符渲染回复，完成后定时淡出（参照 typeNextMidoriReplyGrapheme + scheduleMidoriReplyExpiry）
+  typeReply(text, onDone) {
+    this.stopTypewriter();
+    this.el.subtitle.classList.remove('is-fading');
+    this.showReply('');
+    this._typeUnits = Array.from(text || '');
+    this._typeIndex = 0;
+    const step = () => {
+      this._typeTimer = null;
+      if (this._typeIndex >= this._typeUnits.length) {
+        this._scheduleExpiry();
+        if (onDone) onDone();
+        return;
+      }
+      this.el.reply.textContent += this._typeUnits[this._typeIndex++];
+      this._typeTimer = setTimeout(step, TYPE_INTERVAL_MS);
+    };
+    step();
+  }
+
+  stopTypewriter() {
+    if (this._typeTimer) clearTimeout(this._typeTimer);
+    this._typeTimer = null;
+    if (this._retentionTimer) clearTimeout(this._retentionTimer);
+    this._retentionTimer = null;
+    this.el.subtitle.classList.remove('is-fading');
+  }
+
+  _scheduleExpiry() {
+    if (this._retentionTimer) clearTimeout(this._retentionTimer);
+    this._retentionTimer = setTimeout(() => {
+      this._retentionTimer = null;
+      this.el.subtitle.classList.add('is-fading');
+      this._fadeTimer = setTimeout(() => this.clearSubtitle(), REPLY_FADE_MS);
+    }, REPLY_RETENTION_MS);
+  }
+
   clearSubtitle() {
+    this.stopThinking();
+    this.stopTypewriter();
     this.el.user.textContent = '';
     this.el.reply.textContent = '';
     this.el.status.textContent = '';

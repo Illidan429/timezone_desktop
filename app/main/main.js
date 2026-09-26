@@ -194,6 +194,28 @@ function startCursorLoop() {
   }, 50);
 }
 
+// ---------- 对话历史持久化 ----------
+const CHAT_HISTORY_FILE = path.join(app.getPath('userData'), 'chat-history.json');
+
+function loadChatHistory() {
+  try {
+    const v = JSON.parse(fs.readFileSync(CHAT_HISTORY_FILE, 'utf8'));
+    if (Array.isArray(v)) return v.filter(x => x && typeof x.content === 'string');
+  } catch { /* 首次无文件 */ }
+  return [];
+}
+
+function saveChatHistory(history) {
+  try {
+    fs.mkdirSync(path.dirname(CHAT_HISTORY_FILE), { recursive: true });
+    fs.writeFileSync(CHAT_HISTORY_FILE, JSON.stringify(history, null, 0), 'utf8');
+  } catch (e) { console.warn('[chat] 历史保存失败：', e.message); }
+}
+
+function clearChatHistoryFile() {
+  try { fs.rmSync(CHAT_HISTORY_FILE, { force: true }); } catch { /* 忽略 */ }
+}
+
 // ---------- IPC ----------
 function registerIpc() {
   ipcMain.handle('settings:get', () => sanitizedView());
@@ -218,20 +240,27 @@ function registerIpc() {
 
   ipcMain.handle('api:test', (_e, type) => testApi(type));
 
-  // 对话历史保存在主进程
-  const history = [];
+  // 对话历史保存在主进程并持久化（重启不丢，参照参考项目的会话管理）
+  const history = loadChatHistory();
+  const saveHistory = () => saveChatHistory(history);
   ipcMain.handle('chat:llm', (_e, userText) => {
     history.push({ role: 'user', content: String(userText) });
     while (history.length > MAX_HISTORY_ROUNDS * 2) history.shift();
     return chatComplete(history).then(text => {
       history.push({ role: 'assistant', content: text });
       while (history.length > MAX_HISTORY_ROUNDS * 2) history.shift();
+      saveHistory();
       return { text };
     });
   });
   ipcMain.handle('chat:asr', (_e, wav) => transcribe(Buffer.from(wav)));
   ipcMain.handle('chat:tts', (_e, text) => synthesize(String(text)));
-  ipcMain.handle('chat:clear', () => { history.length = 0; cancelAll(); return { ok: true }; });
+  ipcMain.handle('chat:clear', () => {
+    history.length = 0;
+    clearChatHistoryFile();
+    cancelAll();
+    return { ok: true };
+  });
   ipcMain.handle('chat:cancel', () => { cancelAll(); return { ok: true }; });
 
   ipcMain.handle('window:moveBy', (_e, dx, dy) => {

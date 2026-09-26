@@ -96,7 +96,11 @@ function wireControls() {
     pipeline.send(text, '文字');
   };
   send.addEventListener('click', submit);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  input.addEventListener('keydown', e => {
+    // 中文输入法选字过程中的 Enter 不发送（参照参考项目 isComposing 处理）
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter') submit();
+  });
   settings.addEventListener('click', () => window.petAPI.windowOpenSettings());
   ui.el.hideBar.addEventListener('click', () => window.petAPI.prefsSet({ controlsVisible: false }));
   ui.setMode(/** @type {any} */(pipeline.mode) && modeBtn.textContent, pipeline.mode === CHAT_MODES.TEXT);

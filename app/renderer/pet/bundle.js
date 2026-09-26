@@ -588,7 +588,7 @@
       const gen = ++this._gen;
       this.ui.showUser(`${sourceLabel}\uFF1A${text}`);
       this.setState("thinking");
-      this.ui.status("\u601D\u8003\u4E2D\u2026");
+      this.ui.startThinking();
       let reply;
       try {
         ({ text: reply } = await window.petAPI.chatLlm(text));
@@ -598,7 +598,8 @@
         return;
       }
       if (gen !== this._gen) return;
-      this.ui.showReply(reply);
+      this.ui.stopThinking();
+      this.ui.typeReply(reply);
       this.setState("speaking");
       this.ui.status("");
       try {
@@ -610,10 +611,12 @@
         this.setState("idle");
       }
     }
-    // 点击角色或新输入时打断：停止播放、清队列、终止外部请求
+    // 点击角色或新输入时打断：停止播放、清队列、终止外部请求与界面动画
     interrupt() {
       const wasSpeaking = this.state === "speaking";
       this._gen++;
+      this.ui.stopThinking();
+      this.ui.stopTypewriter();
       this.player.stopAndClear();
       window.petAPI.chatCancel();
       this.setState("idle");
@@ -622,6 +625,8 @@
     _interruptIfSpeaking() {
       if (this.state === "speaking" || this.state === "thinking") {
         this._gen++;
+        this.ui.stopThinking();
+        this.ui.stopTypewriter();
         this.player.stopAndClear();
         window.petAPI.chatCancel();
       }
@@ -638,6 +643,10 @@
   };
 
   // app/renderer/pet/src/ui.js
+  var THINKING_DOT_INTERVAL_MS = 400;
+  var TYPE_INTERVAL_MS = 20;
+  var REPLY_RETENTION_MS = 3e4;
+  var REPLY_FADE_MS = 800;
   var Ui = class {
     constructor(manifest) {
       this.el = {
@@ -659,6 +668,12 @@
       this.el.hideBar = document.getElementById("hideBar");
       this.nightStars = 0;
       this._fadeTimer = null;
+      this._thinkingTimer = null;
+      this._thinkingDots = 0;
+      this._typeTimer = null;
+      this._typeUnits = [];
+      this._typeIndex = 0;
+      this._retentionTimer = null;
       this.el.close.addEventListener("click", () => this.clearSubtitle());
       this._fxLoop = this._fxLoop.bind(this);
       requestAnimationFrame(this._fxLoop);
@@ -680,7 +695,58 @@
       this.el.status.textContent = text || "";
       if (text) this.el.subtitle.style.display = "block";
     }
+    // 思考动画：状态行点点跳动（参照参考项目 startMidoriReplyThinking）
+    startThinking(prefix = "\u601D\u8003\u4E2D") {
+      this.stopThinking();
+      this._thinkingDots = 0;
+      const tick = () => {
+        this.status(`${prefix}${".".repeat(this._thinkingDots + 1)}`);
+        this._thinkingDots = (this._thinkingDots + 1) % 3;
+        this._thinkingTimer = setTimeout(tick, THINKING_DOT_INTERVAL_MS);
+      };
+      tick();
+    }
+    stopThinking() {
+      if (this._thinkingTimer) clearTimeout(this._thinkingTimer);
+      this._thinkingTimer = null;
+    }
+    // 打字机：逐字符渲染回复，完成后定时淡出（参照 typeNextMidoriReplyGrapheme + scheduleMidoriReplyExpiry）
+    typeReply(text, onDone) {
+      this.stopTypewriter();
+      this.el.subtitle.classList.remove("is-fading");
+      this.showReply("");
+      this._typeUnits = Array.from(text || "");
+      this._typeIndex = 0;
+      const step = () => {
+        this._typeTimer = null;
+        if (this._typeIndex >= this._typeUnits.length) {
+          this._scheduleExpiry();
+          if (onDone) onDone();
+          return;
+        }
+        this.el.reply.textContent += this._typeUnits[this._typeIndex++];
+        this._typeTimer = setTimeout(step, TYPE_INTERVAL_MS);
+      };
+      step();
+    }
+    stopTypewriter() {
+      if (this._typeTimer) clearTimeout(this._typeTimer);
+      this._typeTimer = null;
+      if (this._retentionTimer) clearTimeout(this._retentionTimer);
+      this._retentionTimer = null;
+      this.el.subtitle.classList.remove("is-fading");
+    }
+    _scheduleExpiry() {
+      if (this._retentionTimer) clearTimeout(this._retentionTimer);
+      this._retentionTimer = setTimeout(() => {
+        this._retentionTimer = null;
+        this.el.subtitle.classList.add("is-fading");
+        this._fadeTimer = setTimeout(() => this.clearSubtitle(), REPLY_FADE_MS);
+      }, REPLY_RETENTION_MS);
+    }
     clearSubtitle() {
+      this.stopThinking();
+      this.stopTypewriter();
       this.el.user.textContent = "";
       this.el.reply.textContent = "";
       this.el.status.textContent = "";
@@ -835,6 +901,7 @@
     };
     send.addEventListener("click", submit);
     input.addEventListener("keydown", (e) => {
+      if (e.isComposing || e.keyCode === 229) return;
       if (e.key === "Enter") submit();
     });
     settings.addEventListener("click", () => window.petAPI.windowOpenSettings());

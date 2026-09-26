@@ -25,6 +25,7 @@
     #charStack.dragging { cursor: grabbing; }
     #subtitle {
       position: absolute; left: 50%; transform: translateX(-50%);
+      transition: opacity 0.8s;
       bottom: 560px; max-width: 440px; min-width: 120px;
       background: rgba(30, 32, 44, 0.88); color: #fff;
       border-radius: 14px; padding: 10px 14px;
@@ -58,6 +59,7 @@
     }
     #controls input:focus { border-color: #ffb25a; }
     #controls button:disabled { opacity: 0.45; cursor: not-allowed; }
+    #subtitle.is-fading { opacity: 0; }
     body.night #subtitle { background: rgba(18, 20, 34, 0.92); }
   </style>
 </head>

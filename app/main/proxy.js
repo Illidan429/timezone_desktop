@@ -32,7 +32,8 @@ async function request(type, url, init = {}) {
   controllers.add(ctrl);
   const started = Date.now();
   try {
-    const res = await net.fetch(url, { ...init, signal: ctrl.signal });
+    // 120 秒硬超时：结果不明时不自动重试（参照参考项目的聊天超时原则）
+    const res = await net.fetch(url, { ...init, signal: AbortSignal.any([ctrl.signal, AbortSignal.timeout(120000)]) });
     const latency = Date.now() - started;
     if (!res.ok) {
       const body = await res.text().catch(() => '');
@@ -48,6 +49,11 @@ async function request(type, url, init = {}) {
     }
     return { res, latency };
   } catch (e) {
+    if (e.name === 'TimeoutError') {
+      e.category = 'timeout';
+      e.message = '本轮请求超过 120 秒，已取消；结果不明，未自动重试';
+      throw e;
+    }
     if (e.name === 'AbortError') throw e;
     if (!e.category) {
       e.category = 'network';
