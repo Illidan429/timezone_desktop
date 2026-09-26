@@ -1,4 +1,5 @@
-// 素材收集需求文档生成器（完整版 v1.2）：需求 + 占位猫示意图 → 单个自包含 HTML
+// 素材收集需求文档生成器（完整版 v1.3）：需求 + 占位猫示意图 → 单个自包含 HTML
+// 工作方式：甲方提供正面参考图，画师据参考图绘制全套素材（非 Live2D 导出）
 // 用法：
 //   PLACEHOLDER_OUT=.tmp-brief-assets node scripts/gen-placeholder-assets.mjs   # 先生成示意图素材
 //   node scripts/gen-asset-brief.mjs                                            # 再生成文档
@@ -14,6 +15,11 @@ const ASSETS = process.env.PLACEHOLDER_OUT
 
 const svg = (rel) => fs.readFileSync(path.join(ASSETS, rel), 'utf8')
   .replace(/<\?xml[^>]*\?>\s*/g, '').trim();
+
+const b64 = (p) => 'data:image/png;base64,' + fs.readFileSync(p).toString('base64');
+// 正面参考图（存在则嵌入文档）
+const REF = path.join(ROOT, 'docs', 'reference-front.png');
+const refImg = fs.existsSync(REF) ? b64(REF) : null;
 
 // 叠层帧：第一层为底图，其余绝对定位覆盖
 function frame(layers, caption, opts = {}) {
@@ -35,12 +41,18 @@ const pose = svg('poses/idle.svg');
 const blinkHalf = svg('blink/half.svg'), blinkClosed = svg('blink/closed.svg');
 const mouthHalf = svg('mouth/half.svg'), mouthOpen = svg('mouth/open.svg');
 
+const refSection = refImg ? `
+  <h3>正面参考图（甲方提供）</h3>
+  <p>所有帧以这张正面参考图为唯一基准，保持角色脸型、发型、服装、配饰完全一致：</p>
+  <figure class="ref-wrap"><img class="ref-img" src="${refImg}" alt="正面参考图">
+  <figcaption>正面参考图（675×874，角色站姿）——交付帧的角色必须与之一致</figcaption></figure>` : '';
+
 const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>角色素材收集需求（完整版）· 桌宠伴侣</title>
+<title>角色素材绘制需求（完整版）· 桌宠伴侣</title>
 <style>
   :root { --brand:#f59a3e; --ink:#2a2f3a; --sub:#5a6373; --line:#e8ecf2; }
   * { box-sizing:border-box; }
@@ -71,6 +83,9 @@ const html = `<!DOCTYPE html>
   .lyr svg { width:100%; height:100%; display:block; }
   .ov-bad { transform:translate(16px,12px); }
   figcaption { font-size:12.5px; color:var(--sub); margin-top:6px; }
+  .ref-wrap { margin:0; text-align:center; }
+  .ref-img { max-width:320px; width:100%; border-radius:10px; border:1px solid var(--line);
+             background:repeating-conic-gradient(#ececec 0% 25%, #ffffff 0% 50%) 0 0 / 18px 18px; }
   .gaze-grid { display:grid; grid-template-columns:repeat(3,150px); gap:12px; }
   .seq { display:flex; flex-wrap:wrap; align-items:flex-end; gap:4px; }
   .arrow { font-size:22px; color:#c2cad6; padding:0 8px 34px; }
@@ -91,7 +106,7 @@ const html = `<!DOCTYPE html>
   @media print {
     body { background:#fff; padding:0; }
     section, header.hero { box-shadow:none; break-inside:avoid; }
-    .frame { border:1px solid #ddd; }
+    .frame, .ref-img { border:1px solid #ddd; }
   }
 </style>
 </head>
@@ -99,16 +114,17 @@ const html = `<!DOCTYPE html>
 <div class="page">
 
 <header class="hero">
-  <h1>角色素材收集需求（完整版）· 桌宠伴侣</h1>
-  <p>从 Live2D 模型录制导出图片素材，用于桌面宠物应用的角色显示：眼神跟随鼠标、待机眨眼、说话口型——覆盖全部视角方向。</p>
-  <div class="meta">文档版本 v1.2 · 2026-09-26 · 示意图使用占位猫演示，正式素材以实际角色为准 · 本文档为唯一完整需求，请勿使用旧版</div>
+  <h1>角色素材绘制需求（完整版）· 桌宠伴侣</h1>
+  <p>以甲方提供的正面参考图为基准，绘制桌面宠物应用所需的整套角色图片：眼神跟随鼠标、待机眨眼、说话口型——覆盖全部视角方向。</p>
+  <div class="meta">文档版本 v1.3 · 2026-09-26 · 文中示意图使用占位猫演示画法要求，正式素材以参考图角色为准 · 本文档为唯一完整需求，请勿使用旧版</div>
 </header>
 
 <section>
   <h2>一、一分钟看懂</h2>
   <ul>
-    <li><b>统一画布</b>：所有图片用同一个画布尺寸导出（建议 600×800 竖版、透明背景 PNG），角色在画布中位置固定不动。</li>
-    <li><b>三类图</b>：立绘 / 视线方向帧 / 每方向的眨眼与口型帧。视线帧带轻微头部动作时，眨眼和口型必须<b>逐方向</b>提供，才能处处贴合。</li>
+    <li><b>以参考图为基准</b>：甲方提供正面参考图，全套素材的角色形象必须与参考图完全一致；建议先出九方向姿态草图给甲方确认，再细化全套。</li>
+    <li><b>统一画布</b>：所有图用同一画布（建议 600×800 竖版、透明背景 PNG），角色在画布中位置稳定、不漂移。</li>
+    <li><b>三类图</b>：立绘 / 视线方向帧（<b>头部与身体随方向自然变换姿态</b>，不只是动眼睛）/ 每方向的眨眼与口型帧。</li>
     <li><b>照模板命名</b>：放进规定文件夹、按模板命名并填好 manifest，交付后<b>无需改代码</b>直接生效。</li>
   </ul>
 </section>
@@ -117,8 +133,8 @@ const html = `<!DOCTYPE html>
   <h2>二、交付总览</h2>
   <table>
     <tr><th>类别</th><th>存放目录</th><th>数量</th><th>内容</th><th>必须</th></tr>
-    <tr><td>立绘（姿态）</td><td>poses/</td><td>1～4 张</td><td>完整角色整帧，不同姿态（待机必交）</td><td class="ok">✅ 至少 1 张</td></tr>
-    <tr><td>视线方向帧</td><td>gaze/</td><td>9 张（3×3）</td><td>只动视线/头部朝向的整帧，覆盖 9 个注视方向</td><td class="ok">✅</td></tr>
+    <tr><td>立绘（姿态）</td><td>poses/</td><td>1～4 张</td><td>完整角色，不同姿态（待机必交）</td><td class="ok">✅ 至少 1 张</td></tr>
+    <tr><td>视线方向帧</td><td>gaze/</td><td>9 张（3×3）</td><td>头部与身体随视线方向自然变换姿态的整帧</td><td class="ok">✅</td></tr>
     <tr><td>眨眼 · 全闭</td><td>blink/</td><td>9 张</td><td>每个视线方向一张闭眼整帧 <code>g{c}r{r}.png</code></td><td class="ok">✅</td></tr>
     <tr><td>眨眼 · 半闭</td><td>blink/</td><td>9 张</td><td>每个视线方向一张半闭眼整帧 <code>g{c}r{r}_half.png</code></td><td>推荐</td></tr>
     <tr><td>口型 · 全开</td><td>mouth/</td><td>9 张</td><td>每个视线方向一张张嘴整帧 <code>g{c}r{r}.png</code></td><td class="ok">✅</td></tr>
@@ -126,25 +142,31 @@ const html = `<!DOCTYPE html>
     <tr><td>主题氛围元素</td><td>自定</td><td>不限</td><td>夜间装饰等，可后续补交</td><td>可选</td></tr>
   </table>
   <p class="sub" style="margin-top:10px">必交合计 <b>28 张</b>（立绘1 + 视线9 + 全闭9 + 全开9）；加半闭/半开共 <b>46 张</b>，过渡更柔和。<br>
-  统一规格：透明背景 PNG-24；画布 600×800（也可 1024×1280）；所有帧尺寸必须完全一致；单张 ≤ 2MB。</p>
+  统一规格：透明背景 PNG-24；画布 600×800（也可 1024×1280）；所有帧尺寸完全一致；单张 ≤ 2MB。</p>
 </section>
 
 <section>
   <h2>三、各类素材详细要求（含示意图）</h2>
+  ${refSection}
 
   <h3>1. 立绘 poses/</h3>
-  <p>完整角色、透明背景，姿态自然。必交一张默认待机（<code>idle</code>）；如有其他常用姿态（开心、疑问等）一并交付，命名对应 manifest。</p>
+  <p>以参考图为基准绘制，透明背景，姿态自然。必交一张默认待机（<code>idle</code>，与参考图站姿一致）；如有其他常用姿态（开心、疑问等）一并交付，命名对应 manifest。</p>
   ${frame([pose], '待机 idle（必交）')}${frame([pose], '其他姿态示例（可选）')}
-  <p class="sub">导出后会在应用中缩放显示，画布内角色尽量占满高度、四周留少量边距。</p>
+  <p class="sub">应用中会缩放显示，画布内角色尽量占满高度、四周留少量边距。</p>
 
   <h3>2. 视线方向帧 gaze/（3×3 共 9 张）</h3>
-  <p>应用会让角色眼神跟随屏幕上的鼠标——鼠标在角色的 9 个方位时切换到对应帧。录制时<b>只改视线（和头部朝向）参数</b>，身体、表情、位置全部保持与立绘一致。允许加入轻微自然的头部倾斜/身体随动（效果更好），但此时<b>第四、五节的每方向眨眼与口型帧为必交项</b>。</p>
-  <p><span class="tag">命名规则</span><code>g{c}r{r}.png</code>：g=左右列（g0 看左、g1 正中、g2 看右），r=上下行（r0 看上、r1 正中、r2 看下）。</p>
+  <p>应用会让角色眼神跟随屏幕上的鼠标——鼠标在角色的 9 个方位时切换到对应帧。<b>要求头部与身体随方向自然变换姿态</b>：头部朝向与倾斜、肩颈与上身重心随动，像真人转头看东西一样；只动眼睛会显得僵硬，不符合要求。</p>
+  <ul>
+    <li>姿态变化要<b>自然连贯</b>：九张帧依次切换像一段连续动作，不是九张独立的画；</li>
+    <li>角色<b>整体位置稳定</b>：画布锚点一致，不能整体漂移或忽大忽小；</li>
+    <li>除头部/上身随动外，服装、配饰、表情基调与参考图保持一致。</li>
+  </ul>
+  <p><span class="tag">命名规则</span><code>g{c}r{r}.png</code>：g=左右列（g0 看左、g1 正中、g2 看右），r=上下行（r0 看上、r1 正中、r2 看下）。<b>正中帧 g1r1 与待机立绘一致。</b></p>
   <div class="gaze-grid">${gazeCells.join('\n')}</div>
   <p class="sub">想更顺滑可升级 5×5（25 张，g0～g4 / r0～r4），manifest 里把 cols/rows 改成 5 即可。</p>
 
   <h3>3. 眨眼帧 blink/（每方向 1～2 张，共 9～18 张）</h3>
-  <p>待机时角色自动眨眼。要求<b>每个视线方向</b>各有一套闭眼帧：在该方向的头部姿态基础上，仅把「眨眼」参数设为约 <b>50%</b>（半闭 <code>_half</code>）和 <b>100%</b>（全闭），导出整帧。睁开状态不需要单独导出（直接显示视线帧本体）。</p>
+  <p>待机时角色自动眨眼。因为视线帧的头部/身体姿态随方向变化，眨眼帧必须<b>逐方向绘制</b>：在对应方向视线帧的画稿上，仅把眼睛画成半闭（<code>_half</code>）或全闭，其余部分与该方向视线帧完全相同。睁开状态不需要单独画（直接使用视线帧本体）。</p>
   <p><span class="tag">命名规则</span>全闭 <code>blink/g{c}r{r}.png</code>；半闭 <code>blink/g{c}r{r}_half.png</code>。例如看向左上时眨眼的全闭帧是 <code>blink/g0r0.png</code>。</p>
   <div class="seq">
     ${frame([pose], '睁开 = 视线帧本体')}
@@ -157,7 +179,7 @@ const html = `<!DOCTYPE html>
   </div>
 
   <h3>4. 口型帧 mouth/（每方向 1～2 张，共 9～18 张）</h3>
-  <p>角色说话时口型随音量开合，与眨眼同理，<b>每个视线方向</b>各有一套张嘴帧：在该方向头部姿态基础上，仅把「嘴张合」参数设为约 <b>50%</b>（半开 <code>_half</code>）和 <b>100%</b>（全开）。闭口状态不需要单独导出。</p>
+  <p>角色说话时口型随音量开合，与眨眼同理<b>逐方向绘制</b>：在对应方向视线帧的画稿上，仅把嘴巴画成半张（<code>_half</code>）或全张。闭口状态不需要单独画（直接使用视线帧本体）。</p>
   <p><span class="tag">命名规则</span>全开 <code>mouth/g{c}r{r}.png</code>；半开 <code>mouth/g{c}r{r}_half.png</code>。</p>
   <div class="seq">
     ${frame([pose], '闭口 = 视线帧本体')}
@@ -166,31 +188,36 @@ const html = `<!DOCTYPE html>
     <span class="arrow">→</span>
     ${frame([pose, mouthOpen], '全开')}
   </div>
+  <div class="callout"><b>高效画法建议</b>：在同一源文件（PSD/Procreate 等）中分层管理——身体与头部分方向建组，眼睛（开/半闭/闭）与嘴（闭/半/全）做成可替换图层组，组合导出可批量产出全部帧，并天然保证同方向帧之间只有眼睛/嘴在动。</div>
 </section>
 
 <section>
   <h2>四、对齐规范（最重要）</h2>
-  <p>应用通过<b>逐帧叠加切换</b>实现动画：所有帧的画布、角色位置必须完全一致，只允许目标参数变化。错位会导致运行时角色<b>抖动 / 鬼影</b>。</p>
+  <p>应用通过<b>逐帧切换</b>实现动画，对齐分两个层面：</p>
+  <ul>
+    <li><b>帧间锚点一致</b>：所有帧同一画布，角色整体位置稳定——九方向视线帧切换时，姿态可以变，但角色不能整体漂移、忽大忽小或跳出画布；</li>
+    <li><b>同方向覆盖帧严格对齐</b>：每方向的闭眼/张嘴帧与<b>该方向</b>的视线帧叠合时，必须只有眼睛或嘴在变，其余每一笔都重合。</li>
+  </ul>
   <div class="panel2">
     ${frame([pose, blinkClosed], '<span class="ok">✓ 正确：与底图完全对齐</span>')}
-    ${frame([pose, blinkClosed], '<span class="bad">✗ 错误：帧整体偏移 → 抖动</span>', { badOffset: true })}
+    ${frame([pose, blinkClosed], '<span class="bad">✗ 错误：帧整体偏移 → 重影</span>', { badOffset: true })}
   </div>
   <div class="callout">
-    <b>自查方法</b>：把「某方向的视线帧 + 该方向的闭眼帧」叠在一起，来回切换图层可见性——只有眼睛在变、画面其他部分纹丝不动即为合格。9 个方向逐一检查；口型帧同理。
+    <b>自查方法</b>：把「某方向视线帧 + 该方向闭眼帧」叠在一起，来回切换图层可见性——只有眼睛在变、其他纹丝不动即为合格；9 个方向逐一检查。九方向帧之间连续切换检查姿态过渡是否自然。
   </div>
 </section>
 
 <section>
-  <h2>五、Live2D Cubism 导出步骤</h2>
+  <h2>五、绘制与交付流程</h2>
   <ol>
-    <li><b>建场景</b>：动画工作区新建场景，画布设为目标尺寸（如 600×800），摆好默认姿势并固定模型位置。</li>
-    <li><b>立绘</b>：所有参数归默认值，导出 <code>poses/idle.png</code>；其他姿态逐个摆好导出。</li>
-    <li><b>视线 9 帧</b>：仅把「视线 X / 视线 Y」（或头部角度参数）依次设到 9 个格位，逐格导出 <code>gaze/g{c}r{r}.png</code>。</li>
-    <li><b>眨眼 18 张</b>：对每个视线格位——固定该方向参数，仅把「眨眼」设为 50% / 100%，导出 <code>blink/g{c}r{r}_half.png</code> 与 <code>blink/g{c}r{r}.png</code>。</li>
-    <li><b>口型 18 张</b>：对每个视线格位——固定该方向参数，仅把「嘴张合」设为 50% / 100%，导出 <code>mouth/g{c}r{r}_half.png</code> 与 <code>mouth/g{c}r{r}.png</code>。</li>
-    <li>全部使用<b>透明背景</b>（PNG）导出，不要带背景色。</li>
+    <li><b>确认参考</b>：以甲方正面参考图为基准建立画布（600×800，角色占满高度、四周留少量边距）。</li>
+    <li><b>九方向姿态草图</b>：先画 9 个方向的姿态草图（头部+身体随动）交甲方确认，<b>确认后再细化全套</b>，避免返工。</li>
+    <li><b>细化视线 9 帧</b>：按确认的草图细化，导出 <code>gaze/g{c}r{r}.png</code>。</li>
+    <li><b>每方向眨眼 18 张</b>：在对应方向画稿上仅改眼睛为半闭/全闭，导出 <code>blink/g{c}r{r}_half.png</code>、<code>blink/g{c}r{r}.png</code>。</li>
+    <li><b>每方向口型 18 张</b>：在对应方向画稿上仅改嘴为半张/全张，导出 <code>mouth/g{c}r{r}_half.png</code>、<code>mouth/g{c}r{r}.png</code>。</li>
+    <li>全部<b>透明背景</b> PNG 导出，按命名规则命名。</li>
   </ol>
-  <div class="callout"><b>批量技巧</b>：在动画工作区把「9 方向 × 表情参数」排成动画序列，用「批量输出 PNG（序列帧）」一次性导出全部 36 张，再按规则重命名，效率最高。</div>
+  <p class="sub">分批交付是允许的：先交「立绘 + 视线 9 帧」即可让角色上桌；眨眼/口型的每方向帧按批补交（应用对缺失帧自动回退，不会出错）。</p>
 </section>
 
 <section>
@@ -198,7 +225,7 @@ const html = `<!DOCTYPE html>
   <p>把以下目录打包 zip 交付（manifest.json 由制作者或接收方按模板填写均可）：</p>
   <pre><span class="c">角色素材包/</span>
 ├── manifest.json
-├── CREDITS.md          <span class="c">（来源与授权说明：模型名、制作者、授权范围）</span>
+├── CREDITS.md          <span class="c">（来源与授权说明：原图作者、制作者、授权范围）</span>
 ├── poses/
 │   ├── idle.png        <span class="c">（必交）</span>
 │   └── happy.png       <span class="c">（可选，其他姿态同理）</span>
@@ -249,26 +276,27 @@ const html = `<!DOCTYPE html>
               "night": { "name": "夜间", "starCount": 60 } },
   <span class="c">"testAudio"</span>: "audio/test.wav"
 }</pre>
-  <p class="sub">说明：<code>blink/mouth</code> 用 perGaze 模式逐方向加载；<code>frames</code> 引用正中方向（g1r1）的图作为兜底——某方向帧意外缺失时自动回退，不会白屏。多姿态时全部表情帧基于默认姿态（idle）录制。</p>
+  <p class="sub">说明：<code>blink/mouth</code> 用 perGaze 模式逐方向加载；<code>frames</code> 引用正中方向（g1r1）的图作为兜底——某方向帧意外缺失时自动回退，不会出错。多姿态时全部表情帧基于默认姿态（idle）方向组绘制。</p>
 </section>
 
 <section>
   <h2>七、交付前自查清单</h2>
   <ul class="check">
-    <li>所有图片画布尺寸完全一致（同一场景导出）</li>
-    <li>全部为透明背景 PNG，无背景色块</li>
-    <li>角色在画布中位置固定：逐帧切换时只有眼睛/嘴在动</li>
-    <li>视线 9 帧方向正确（g0 左 / g2 右，r0 上 / r2 下），身体与表情无变化</li>
-    <li>每方向闭眼帧与该方向视线帧叠合检查通过（9 组），闭眼完全闭合且过渡自然</li>
-    <li>每方向张嘴帧与该方向视线帧叠合检查通过（9 组），张合过渡自然</li>
+    <li>所有图片画布尺寸完全一致，透明背景 PNG 无背景色块</li>
+    <li>角色形象与参考图完全一致（脸型、发型、服装、配饰）</li>
+    <li>角色在画布中位置稳定：九方向帧连续切换姿态过渡自然、不漂移不跳变</li>
+    <li>视线帧的头部与身体随方向变化，不是只动眼睛</li>
+    <li>视线 9 帧方向正确（g0 左 / g2 右，r0 上 / r2 下）</li>
+    <li>每方向闭眼帧与该方向视线帧叠合检查通过（9 组）：只有眼睛在变</li>
+    <li>每方向张嘴帧与该方向视线帧叠合检查通过（9 组）：只有嘴在变</li>
     <li>半闭/半开帧位于睁开与全闭/全开之间，无跳变</li>
     <li>文件命名与 manifest 模板一致（区分大小写，<code>_half</code> 后缀）</li>
-    <li>已附 CREDITS.md（模型来源、制作者、授权范围）</li>
+    <li>已附 CREDITS.md（原图作者、制作者、授权范围）</li>
   </ul>
-  <div class="callout">最低可用交付：立绘 1 张 + 视线 9 张 + 每方向全闭 9 张 + 每方向全开 9 张（共 28 张）即可获得完整体验；半闭/半开后续补充不影响上线。</div>
+  <div class="callout">分批交付建议：第一批「立绘 + 九方向姿态草图」确认 → 第二批「视线 9 帧」（角色上桌）→ 第三批「每方向全闭 + 全开 18 张」（消除眨眼/说话重影）→ 第四批「半闭/半开 18 张」（过渡更柔和）。每批都独立可用。</div>
 </section>
 
-<div class="foot">桌宠伴侣 · 角色素材收集需求（完整版 v1.2）· 生成于 2026-09-26 · 疑问请联系：____________</div>
+<div class="foot">桌宠伴侣 · 角色素材绘制需求（完整版 v1.3）· 生成于 2026-09-26 · 疑问请联系：____________</div>
 </div>
 </body>
 </html>
