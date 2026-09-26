@@ -94,6 +94,7 @@
       this.blinkEnabled = Boolean(manifest.blink?.frames?.length);
       this.mouthEnabled = Boolean(manifest.mouth?.frames?.length);
       this.gazeCell = null;
+      this.currentPoseImg = null;
       this.gazeOffset = [0, 0];
       this.blinkLevel = 0;
       this.mouthLevel = 0;
@@ -105,8 +106,8 @@
       const pose = (this.m.poses || []).find((p) => p.id === poseId) || this.m.poses?.[0];
       if (!pose) return;
       this.poseId = pose.id;
-      const img = this.img(pose.src);
-      this._setLayer(this.el.pose, img);
+      this.currentPoseImg = this.img(pose.src) || null;
+      this.setGaze(this.gazeCell);
     }
     // 图层赋值统一走 background-image：加载失败只会不绘制，绝不出现占位框
     _setLayer(el, img) {
@@ -129,16 +130,13 @@
     }
     setGaze(cell) {
       this.gazeCell = cell;
-      if (!this.gazeEnabled || !cell) {
-        this._setLayer(this.el.gaze, null);
-        return;
+      let gazeImg = null;
+      if (this.gazeEnabled && cell && this.gazeAppliesToPose()) {
+        const src = this.m.gaze.srcPattern.replace("{c}", cell.c).replace("{r}", cell.r);
+        gazeImg = this.img(src);
       }
-      if (!this.gazeAppliesToPose()) {
-        this._setLayer(this.el.gaze, null);
-        return;
-      }
-      const src = this.m.gaze.srcPattern.replace("{c}", cell.c).replace("{r}", cell.r);
-      this._setLayer(this.el.gaze, this.img(src));
+      this._setLayer(this.el.gaze, gazeImg);
+      this._setLayer(this.el.pose, gazeImg ? null : this.currentPoseImg);
     }
     gazeAppliesToPose() {
       return !this.m.gaze?.pose || this.m.gaze.pose === this.poseId;
@@ -883,7 +881,7 @@
       const poses = stage.m.poses || [];
       const target = poses[poses.length - 1];
       stage.applyPose(target.id);
-      checks.poseSwitch = stage.poseId === target.id && stage.el.pose.style.backgroundImage.includes("blob:");
+      checks.poseSwitch = stage.poseId === target.id && (stage.el.pose.style.backgroundImage.includes("blob:") || stage.el.gaze.style.backgroundImage.includes("blob:"));
       stage.applyPose(poses[0].id);
       ui.setTheme("night");
       checks.themeNight = document.body.classList.contains("night");

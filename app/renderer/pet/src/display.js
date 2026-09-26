@@ -19,6 +19,7 @@ export class Stage {
     this.blinkEnabled = Boolean(manifest.blink?.frames?.length);
     this.mouthEnabled = Boolean(manifest.mouth?.frames?.length);
     this.gazeCell = null;      // {c,r}
+    this.currentPoseImg = null; // 当前姿态的底图（视线层显示时底图隐藏）
     this.gazeOffset = [0, 0];  // 微位移目标
     this.blinkLevel = 0;       // 0开 1半 2闭
     this.mouthLevel = 0;       // 0闭 1半 2全
@@ -30,8 +31,9 @@ export class Stage {
     const pose = (this.m.poses || []).find(p => p.id === poseId) || this.m.poses?.[0];
     if (!pose) return;
     this.poseId = pose.id;
-    const img = this.img(pose.src);
-    this._setLayer(this.el.pose, img);
+    this.currentPoseImg = this.img(pose.src) || null;
+    // 重新评估视线层：姿态变化后视线帧可能不再适用（或恢复适用），统一在 setGaze 里同步底图
+    this.setGaze(this.gazeCell);
   }
 
   // 图层赋值统一走 background-image：加载失败只会不绘制，绝不出现占位框
@@ -57,10 +59,14 @@ export class Stage {
 
   setGaze(cell) {
     this.gazeCell = cell;
-    if (!this.gazeEnabled || !cell) { this._setLayer(this.el.gaze, null); return; }
-    if (!this.gazeAppliesToPose()) { this._setLayer(this.el.gaze, null); return; }
-    const src = this.m.gaze.srcPattern.replace('{c}', cell.c).replace('{r}', cell.r);
-    this._setLayer(this.el.gaze, this.img(src));
+    let gazeImg = null;
+    if (this.gazeEnabled && cell && this.gazeAppliesToPose()) {
+      const src = this.m.gaze.srcPattern.replace('{c}', cell.c).replace('{r}', cell.r);
+      gazeImg = this.img(src);
+    }
+    this._setLayer(this.el.gaze, gazeImg);
+    // 视线帧是完整角色帧且带身体微动：显示视线层时必须隐藏底图，否则两帧轮廓叠影
+    this._setLayer(this.el.pose, gazeImg ? null : this.currentPoseImg);
   }
 
   gazeAppliesToPose() {

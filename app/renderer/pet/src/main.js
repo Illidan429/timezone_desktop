@@ -192,7 +192,8 @@ window.__PET_SMOKE_CHECKS__ = async function () {
     const poses = stage.m.poses || [];
     const target = poses[poses.length - 1];
     stage.applyPose(target.id);
-    checks.poseSwitch = stage.poseId === target.id && stage.el.pose.style.backgroundImage.includes('blob:');
+    checks.poseSwitch = stage.poseId === target.id
+      && (stage.el.pose.style.backgroundImage.includes('blob:') || stage.el.gaze.style.backgroundImage.includes('blob:'));
     stage.applyPose(poses[0].id);
 
     // 7. 主题切换
