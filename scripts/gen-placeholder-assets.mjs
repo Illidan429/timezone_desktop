@@ -7,7 +7,10 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
-const OUT = path.join(ROOT, 'assets-app', 'default');
+// 允许通过环境变量输出到其他目录（如生成需求文档示意图用），默认为应用素材包目录
+const OUT = process.env.PLACEHOLDER_OUT
+  ? path.join(ROOT, process.env.PLACEHOLDER_OUT)
+  : path.join(ROOT, 'assets-app', 'default');
 
 const W = 600, H = 800;
 const HEAD = { x: 300, y: 260, r: 150 };
