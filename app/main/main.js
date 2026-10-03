@@ -3,6 +3,7 @@ import { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, protocol 
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 import { loadSettings, saveSettings, updatePrefs, sanitizedView } from './store.js';
 import { testApi, chatComplete, transcribe, synthesize, cancelAll } from './proxy.js';
 import { MAX_HISTORY_ROUNDS } from '../shared/constants.js';
@@ -123,9 +124,39 @@ function scheduleSaveBounds() {
 }
 
 // ---------- 托盘 ----------
+// 托盘/任务栏角标图标：优先用当前素材包的角色头像（换角色自动跟随）
 function trayIcon() {
-  const p = path.join(__dirname, 'tray.png');
-  return nativeImage.createFromPath(p);
+  const asset = path.join(ASSETS_ROOT, 'default', 'icon-head-32.png');
+  if (fs.existsSync(asset)) {
+    const img = nativeImage.createFromPath(asset);
+    if (!img.isEmpty()) return img;
+  }
+  return nativeImage.createFromPath(path.join(__dirname, 'tray.png'));
+}
+
+// Windows 11 按可执行文件路径记忆托盘图标是否显示；便携版每次解压路径不同，
+// 导致每次启动图标都被归入隐藏溢出区。启动时主动把当前路径的图标设为"始终显示"。
+function promoteTrayIcon() {
+  try {
+    // reg query 经 GBK 控制台输出，中文 exe 名会乱码；改用 ASCII 的父目录名匹配
+    const exeDir = path.dirname(path.resolve(process.execPath)).toLowerCase();
+    const base = ['HKCU', 'Control Panel', 'NotifyIconSettings'].join(String.fromCharCode(92));
+    let out = '';
+    try { out = execSync(`reg query "${base}"`, { encoding: 'utf8' }); } catch { return; }
+    for (const raw of out.split(/\r?\n/).map(l => l.trim()).filter(Boolean)) {
+      // reg query 输出全称 HKEY_CURRENT_USER，统一缩写为 HKCU 再比较
+      if (!raw.startsWith('HKEY_CURRENT_USER') && !raw.startsWith('HKCU')) continue;
+      const key = raw.startsWith('HKEY_CURRENT_USER') ? 'HKCU' + raw.slice('HKEY_CURRENT_USER'.length) : raw;
+      if (!key.startsWith(base)) continue;
+      try {
+        const detail = execSync(`reg query "${key}" /v ExecutablePath`, { encoding: 'utf8' });
+        if (detail.toLowerCase().includes(exeDir)) {
+          execSync(`reg add "${key}" /v IsPromoted /t REG_DWORD /d 1 /f`);
+          return;
+        }
+      } catch { /* 单键异常继续找下一个 */ }
+    }
+  } catch { /* 静默：非 Windows 11 或注册表不可用时跳过 */ }
 }
 
 function createTray() {
@@ -362,6 +393,7 @@ if (!gotLock) {
     registerIpc();
     createPetWindow();
     createTray();
+    promoteTrayIcon();
     startCursorLoop();
     if (IS_SMOKE) setTimeout(runSmoke, 1500);
   });

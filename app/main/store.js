@@ -16,6 +16,7 @@ const DEFAULTS = {
     mode: 'push',
     volume: 0.9,
     controlsVisible: true,
+    trayVisible: true,
     petBounds: null
   }
 };
