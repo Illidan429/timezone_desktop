@@ -54,12 +54,7 @@
 </head>
 <body>
   <h1>设置</h1>
-  <div class="tip">AI 服务使用 OpenAI 兼容接口格式。API Key 仅保存在本机（加密存储），不会回显。配置后请逐项点击「测试」验证可用。</div>
-
-  <section>
-    <h2>AI 服务</h2>
-    <div id="apiBlocks"></div>
-  </section>
+  <div class="tip">调整桌宠的外观与窗口行为。</div>
 
   <section>
     <h2>偏好</h2>
@@ -67,13 +62,6 @@
       <div>
         <div class="pref-row"><label>主题</label>
           <select id="theme"><option value="day">日间</option><option value="night">夜间</option></select>
-        </div>
-        <div class="pref-row"><label>默认模式</label>
-          <select id="mode">
-            <option value="push">按键说话</option>
-            <option value="handsfree">免提监听</option>
-            <option value="text">文字输入</option>
-          </select>
         </div>
       </div>
       <div>
@@ -83,19 +71,7 @@
         <div class="pref-row"><label>显示操作栏</label>
           <input type="checkbox" id="controlsVisible" />
         </div>
-        <div class="pref-row"><label>播放音量</label>
-          <input type="range" id="volume" min="0" max="100" step="1" style="flex:1" />
-          <span id="volumeVal"></span>
-        </div>
       </div>
-    </div>
-  </section>
-
-  <section>
-    <h2>对话</h2>
-    <div class="actions">
-      <button class="ghost" id="clearBtn">清空对话上下文</button>
-      <span style="color:#7b8494;font-size:12px">清除后角色将忘记之前的聊天内容</span>
     </div>
   </section>
 

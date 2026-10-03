@@ -1,20 +1,17 @@
-// 渲染端入口：装配素材、界面、穿透与拖动、聊天管线
-import { loadManifest, preloadImages, collectImageUrls, assetUrl } from './manifest.js';
-import { Stage, BlinkScheduler, mouthLevelFromRms } from './display.js';
-import { Player } from './player.js';
-import { Recorder } from './recorder.js';
-import { ChatPipeline } from './pipeline.js';
+// 渲染端入口：装配素材与界面（语音聊天功能 UI 已按需求暂停移除，
+// 底层 pipeline/recorder/player 模块保留在仓库中待复用，当前不装配）
+import { loadManifest, preloadImages, collectImageUrls } from './manifest.js';
+import { Stage, BlinkScheduler } from './display.js';
 import { Ui } from './ui.js';
-import { CHAT_MODES } from '../../../shared/constants.js';
 
 // 冒烟状态：主进程 --smoke 模式读取
 window.__PET_STATE__ = { ready: false, errors: [], manifest: null, degrade: [] };
 const state = window.__PET_STATE__;
 
-let stage, blinker, player, recorder, pipeline, ui;
+let stage, blinker, ui;
 let lastCursor = null;
 let ignoreMouse = true;
-let dragging = null; // {startX,startY,lastX,lastY,moved}
+let dragging = null; // {lastX,lastY,moved,downAt}
 
 async function boot() {
   try {
@@ -39,24 +36,13 @@ async function boot() {
     await stage.normalizeBottoms();
     stage._updateBottomScale();
     blinker = new BlinkScheduler(stage);
-    player = new Player();
-    recorder = new Recorder();
     ui = new Ui(mres.manifest);
-    pipeline = new ChatPipeline({ player, recorder, ui });
-
-    player.onLevel = lvl => stage.setMouthLevel(lvl);
-    player.onEnd = () => { if (pipeline.state === 'speaking') pipeline.setState('idle'); };
 
     // 4. 应用设置
-    const { prefs, apis } = await window.petAPI.settingsGet();
+    const { prefs } = await window.petAPI.settingsGet();
     applyPrefs(prefs);
-    pipeline.hasAsr = Boolean(apis?.asr?.baseUrl && apis?.asr?.hasKey);
-    wireControls();
     wireCursorAndDrag();
     window.petAPI.onPrefsChanged(applyPrefs);
-    window.petAPI.onSettingsChanged((view) => {
-      pipeline.hasAsr = Boolean(view?.apis?.asr?.baseUrl && view?.apis?.asr?.hasKey);
-    });
 
     blinker.start();
     state.ready = true;
@@ -71,41 +57,6 @@ function applyPrefs(prefs = {}) {
   if (!stage) return;
   if (prefs.theme) ui.setTheme(prefs.theme);
   if (prefs.pose) stage.applyPose(prefs.pose);
-  if (typeof prefs.volume === 'number') player.setVolume(prefs.volume);
-  if (prefs.controlsVisible !== undefined) ui.setControlsVisible(!!prefs.controlsVisible);
-  if (prefs.mode && pipeline && prefs.mode !== pipeline.mode) {
-    pipeline.mode = prefs.mode;
-    pipeline.setMode(prefs.mode);
-  }
-  if (prefs.topmost !== undefined) {
-    // 置顶由主进程管理，这里仅在托盘/设置同步时无需处理
-  }
-}
-
-function wireControls() {
-  const { modeBtn, talkBtn, input, send, settings } = ui.el;
-  modeBtn.addEventListener('click', () => {
-    const order = [CHAT_MODES.PUSH, CHAT_MODES.HANDSFREE, CHAT_MODES.TEXT];
-    const next = order[(order.indexOf(pipeline.mode) + 1) % order.length];
-    pipeline.setMode(next);
-  });
-  talkBtn.addEventListener('mousedown', () => pipeline.onTalkPress());
-  window.addEventListener('mouseup', () => pipeline.onTalkRelease());
-  const submit = () => {
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = '';
-    pipeline.send(text, '文字');
-  };
-  send.addEventListener('click', submit);
-  input.addEventListener('keydown', e => {
-    // 中文输入法选字过程中的 Enter 不发送（参照参考项目 isComposing 处理）
-    if (e.isComposing || e.keyCode === 229) return;
-    if (e.key === 'Enter') submit();
-  });
-  settings.addEventListener('click', () => window.petAPI.windowOpenSettings());
-  ui.el.hideBar.addEventListener('click', () => window.petAPI.prefsSet({ controlsVisible: false }));
-  ui.setMode(/** @type {any} */(pipeline.mode) && modeBtn.textContent, pipeline.mode === CHAT_MODES.TEXT);
 }
 
 function wireCursorAndDrag() {
@@ -127,7 +78,6 @@ function wireCursorAndDrag() {
       if (dx || dy) window.petAPI.windowMoveBy(dx, dy);
     }
     stage.tick(1 / 60, pt);
-    ui.updateControlsVisibility(pt);
   });
 
   stage.el.stack.addEventListener('mousedown', e => {
@@ -139,8 +89,7 @@ function wireCursorAndDrag() {
       stage.el.stack.classList.remove('dragging');
       const wasClick = dragging.moved < 6 && Date.now() - dragging.downAt < 500;
       dragging = null;
-      if (wasClick && pipeline.state === 'speaking') pipeline.interrupt(); // 点击打断
-      else if (wasClick) blinker.play(); // 点击小互动（无动作素材时以眨眼回应）
+      if (wasClick) blinker.play(); // 点击小互动
     };
     window.addEventListener('mouseup', up);
   });
@@ -168,35 +117,12 @@ window.__PET_SMOKE_CHECKS__ = async function () {
     await sleep(500);
     checks.blink = blinkMid && stage.blinkLevel === 0;
 
-    // 3. 口型：响度→档位，释放防抖后归零
-    player.pushLevel(0.09);
-    checks.mouthHigh = stage.mouthLevel === 2;
-    player.pushLevel(0);
-    await sleep(250);
-    checks.mouthRelease = stage.mouthLevel === 0;
-
-    // 4. 播放队列：内置测试音解码入队并开始播放，可停止；连续入队 3 条依序播放
-    // 冒烟自检静音：避免自动化测试时外放声音
-    player.ensureCtx();
-    player.setVolume(0);
-    let started = false;
-    player.onStart = () => { started = true; };
-    const wav = await (await fetch('app://assets/default/audio/test.wav')).arrayBuffer();
-    player.enqueue(wav); player.enqueue(wav); player.enqueue(wav);
-    await sleep(600);
-    checks.audioPlays = started && player.playing;
-    await sleep(1800); // 第一条约 1.3s，此刻应仍在播第二条（依序、不重叠）
-    checks.audioSequential = player.playing;
-    player.stopAndClear();
-    checks.audioStops = !player.playing;
-    player.setVolume(0.9);
-
-    // 5. 命中检测：角色中心命中；窗口左上角空白处不命中
+    // 3. 命中检测：角色中心命中；窗口左上角空白处不命中
     checks.hitChar = stage.hitTest({ x: cx, y: cy });
     checks.hitEmpty = stage.hitTest({ x: window.screenX + 4, y: window.screenY + 4 }) === false;
     checks.dbg = `screenX=${window.screenX},screenY=${window.screenY},rect=${JSON.stringify(stage.el.stack.getBoundingClientRect())},outerW=${window.outerWidth}`;
 
-    // 6. 姿态切换（素材包姿态数不定：有多个则切到最后一个，仅一个则验证重载）
+    // 4. 姿态切换（素材包姿态数不定：有多个则切到最后一个，仅一个则验证重载）
     const poses = stage.m.poses || [];
     const target = poses[poses.length - 1];
     stage.applyPose(target.id);
@@ -204,26 +130,11 @@ window.__PET_SMOKE_CHECKS__ = async function () {
       && (stage.el.pose.style.backgroundImage.includes('blob:') || stage.el.gaze.style.backgroundImage.includes('blob:'));
     stage.applyPose(poses[0].id);
 
-    // 7. 主题切换
+    // 5. 主题切换
     ui.setTheme('night');
     checks.themeNight = document.body.classList.contains('night');
     ui.setTheme('day');
     checks.themeRestore = !document.body.classList.contains('night');
-
-    // 8. 模式切换（文字模式隐藏麦克风按钮）
-    const pushMode = pipeline.mode;
-    pipeline.setMode('text');
-    checks.modeText = ui.el.talkBtn.style.display === 'none';
-    pipeline.setMode(pushMode === 'text' ? 'push' : pushMode);
-
-    // 9. 清空对话（无 API 也应正常完成）
-    await pipeline.clearHistory();
-    checks.chatClear = true;
-
-    // 10. 打断：播放态下打断回到空闲
-    pipeline.state = 'speaking';
-    pipeline.interrupt();
-    checks.interrupt = pipeline.state === 'idle';
   } catch (e) {
     checks.fatal = String(e && e.stack || e);
   }
@@ -232,6 +143,6 @@ window.__PET_SMOKE_CHECKS__ = async function () {
 };
 
 // 调试/验收接口：直接触达各模块（不影响正常功能）
-window.__PET_DEBUG__ = { get stage() { return stage; }, get player() { return player; }, get recorder() { return recorder; }, get pipeline() { return pipeline; }, get ui() { return ui; } };
+window.__PET_DEBUG__ = { get stage() { return stage; }, get ui() { return ui; } };
 
 boot();
