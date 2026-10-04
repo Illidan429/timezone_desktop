@@ -75,14 +75,14 @@ function petWindowBounds() {
   const s = petScale();
   const pos = prefs.petPos || (prefs.petBounds ? { x: prefs.petBounds.x, y: prefs.petBounds.y } : null);
   const w = Math.round(BASE_W * s), h = Math.round(BASE_H * s);
-  if (pos) {
-    // 位置在哪块屏上就按哪块屏校准（支持多显示器）
-    const display = screen.getDisplayNearestPoint({ x: pos.x, y: pos.y }).workArea;
-    const x = Math.min(Math.max(pos.x, display.x), display.x + display.width - w);
-    const y = Math.min(Math.max(pos.y, display.y), display.y + display.height - h);
-    return { x, y, width: w, height: h };
+  // 位置在哪块屏上就按哪块屏校准（支持多显示器）；无位置记录（全新安装）时用主屏
+  const display = screen.getDisplayNearestPoint(pos ? { x: pos.x, y: pos.y } : screen.getPrimaryDisplay().workArea).workArea;
+  if (!pos) {
+    return { x: display.x + display.width - w - 80, y: display.y + display.height - h - 80, width: w, height: h };
   }
-  return { x: display.x + display.width - w - 80, y: display.y + display.height - h - 80, width: w, height: h };
+  const x = Math.min(Math.max(pos.x, display.x), display.x + display.width - w);
+  const y = Math.min(Math.max(pos.y, display.y), display.y + display.height - h);
+  return { x, y, width: w, height: h };
 }
 
 // 应用缩放：以底边中点为锚缩放窗口，角色落点不跳。
@@ -482,8 +482,18 @@ app.whenReady().then(() => {
     if (IS_SMOKE) updatePrefs({ petPos: { x: 111, y: 222 }, petScale: 1 });
     registerAppProtocol();
     registerIpc();
-    createPetWindow();
-    createTray();
+    try {
+      createPetWindow();
+      log('宠物窗口已创建');
+    } catch (e) {
+      log('窗口创建失败: ' + (e?.stack || e));
+    }
+    try {
+      createTray();
+      log('托盘已创建');
+    } catch (e) {
+      log('托盘创建失败: ' + (e?.stack || e));
+    }
     promoteTrayIcon();
     startCursorLoop();
     if (IS_SMOKE) setTimeout(runSmoke, 1500);
