@@ -123,6 +123,10 @@ function createPetWindow() {
   });
   petWin.setMenuBarVisibility(false);
   petWin.loadURL('app://pet/index.html');
+  log('宠物窗口已创建');
+  petWin.webContents.on('did-fail-load', (_e, code, desc) => log('渲染页加载失败: ' + code + ' ' + desc));
+  petWin.webContents.on('render-process-gone', (_e, details) => log('渲染进程崩溃: ' + JSON.stringify(details)));
+  petWin.on('unresponsive', () => log('窗口失去响应'));
   if (IS_SMOKE) {
     petWin.webContents.on('console-message', (_e, _lvl, message) => console.log('[renderer]', message));
   }
@@ -174,21 +178,29 @@ function trayIcon() {
 // Windows 11 按可执行文件路径记忆托盘图标是否显示；便携版每次解压路径不同，
 // 导致每次启动图标都被归入隐藏溢出区。启动时主动把当前路径的图标设为"始终显示"。
 function promoteTrayIcon() {
+  // 后台执行，不阻塞启动；每步 reg 命令带 1.5 秒超时
+  setImmediate(() => {
+    try { promoteTrayIconSync(); } catch { /* 静默 */ }
+  });
+}
+
+function promoteTrayIconSync() {
   try {
     // reg query 经 GBK 控制台输出，中文 exe 名会乱码；改用 ASCII 的父目录名匹配
     const exeDir = path.dirname(path.resolve(process.execPath)).toLowerCase();
     const base = ['HKCU', 'Control Panel', 'NotifyIconSettings'].join(String.fromCharCode(92));
     let out = '';
-    try { out = execSync(`reg query "${base}"`, { encoding: 'utf8' }); } catch { return; }
+    try { out = execSync(`reg query "${base}"`, { encoding: 'utf8', timeout: 1500 }); } catch { return; }
     for (const raw of out.split(/\r?\n/).map(l => l.trim()).filter(Boolean)) {
       // reg query 输出全称 HKEY_CURRENT_USER，统一缩写为 HKCU 再比较
       if (!raw.startsWith('HKEY_CURRENT_USER') && !raw.startsWith('HKCU')) continue;
       const key = raw.startsWith('HKEY_CURRENT_USER') ? 'HKCU' + raw.slice('HKEY_CURRENT_USER'.length) : raw;
       if (!key.startsWith(base)) continue;
       try {
-        const detail = execSync(`reg query "${key}" /v ExecutablePath`, { encoding: 'utf8' });
+        const detail = execSync(`reg query "${key}" /v ExecutablePath`, { encoding: 'utf8', timeout: 1500 });
         if (detail.toLowerCase().includes(exeDir)) {
-          execSync(`reg add "${key}" /v IsPromoted /t REG_DWORD /d 1 /f`);
+          execSync(`reg add "${key}" /v IsPromoted /t REG_DWORD /d 1 /f`, { timeout: 1500 });
+          log('托盘图标已提升常显: ' + key);
           return;
         }
       } catch { /* 单键异常继续找下一个 */ }
@@ -276,6 +288,16 @@ function startCursorLoop() {
     const pt = screen.getCursorScreenPoint();
     petWin.webContents.send('cursor', { x: pt.x, y: pt.y });
   }, 50);
+}
+
+// ---------- 启动诊断日志（分发后排障用） ----------
+const LOG_FILE = path.join(app.getPath('userData'), 'app-log.txt');
+
+function log(msg) {
+  try {
+    fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
+    fs.appendFileSync(LOG_FILE, new Date().toISOString().replace('T', ' ').slice(0, 19) + ' ' + msg + String.fromCharCode(10));
+  } catch { /* 日志失败不影响运行 */ }
 }
 
 // ---------- 对话历史持久化 ----------
@@ -441,6 +463,7 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
+    log('检测到二次启动，唤起/重建窗口');
     // 再次启动保证有可见的桌宠：窗口还在就唤起，被销毁/丢失则重建
     if (petWin && !petWin.isDestroyed()) {
       petWin.show();
@@ -451,7 +474,10 @@ if (!gotLock) {
     }
   });
 
-  app.whenReady().then(() => {
+  log('主进程启动, exe=' + process.execPath);
+
+app.whenReady().then(() => {
+    log('app ready');
     // 冒烟模式：预置一个特殊窗口位置，用于验证位置记忆恢复
     if (IS_SMOKE) updatePrefs({ petPos: { x: 111, y: 222 }, petScale: 1 });
     registerAppProtocol();
