@@ -85,19 +85,25 @@ function petWindowBounds() {
   return { x: display.x + display.width - w - 80, y: display.y + display.height - h - 80, width: w, height: h };
 }
 
-// 应用缩放：以底边中点为锚缩放窗口，角色落点不跳
+// 应用缩放：以底边中点为锚缩放窗口，角色落点不跳。
+// 拖动滑杆会高频触发，30ms 合并去抖，只应用最后一次，避免 setBounds 排队卡顿
+let scaleApplyTimer = null;
 function applyPetScale() {
   if (!petWin) return;
-  const b = petWin.getBounds();
-  const s = petScale();
-  const w = Math.round(BASE_W * s), h = Math.round(BASE_H * s);
-  petWin.setBounds({
-    x: Math.round(b.x + (b.width - w) / 2),
-    y: Math.round(b.y + (b.height - h)),
-    width: w, height: h
-  });
-  const nb = petWin.getBounds();
-  updatePrefs({ petPos: { x: nb.x, y: nb.y } });
+  clearTimeout(scaleApplyTimer);
+  scaleApplyTimer = setTimeout(() => {
+    if (!petWin || petWin.isDestroyed()) return;
+    const b = petWin.getBounds();
+    const s = petScale();
+    const w = Math.round(BASE_W * s), h = Math.round(BASE_H * s);
+    petWin.setBounds({
+      x: Math.round(b.x + (b.width - w) / 2),
+      y: Math.round(b.y + (b.height - h)),
+      width: w, height: h
+    });
+    const nb = petWin.getBounds();
+    updatePrefs({ petPos: { x: nb.x, y: nb.y } });
+  }, 30);
 }
 
 function createPetWindow() {
@@ -302,7 +308,8 @@ function registerIpc() {
   ipcMain.handle('prefs:set', (_e, patch) => {
     updatePrefs(patch);
     if ('petScale' in patch) applyPetScale();
-    rebuildTrayMenu();
+    // 托盘菜单只含姿态/置顶/操作栏，拖动大小等高频操作不重建菜单
+    if ('pose' in patch || 'topmost' in patch || 'controlsVisible' in patch) rebuildTrayMenu();
     petWin?.webContents.send('prefs-changed', sanitizedView().prefs);
     return loadSettings().prefs;
   });

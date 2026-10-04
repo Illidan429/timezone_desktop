@@ -34,11 +34,14 @@ async function init() {
     await window.petAPI.prefsSet({ controlsVisible: e.target.checked });
   });
   const scaleInput = document.getElementById('petScale');
-  scaleInput.addEventListener('input', () => {
-    document.getElementById('petScaleVal').textContent = scaleInput.value + '%';
-  });
-  scaleInput.addEventListener('change', async e => {
-    await window.petAPI.prefsSet({ petScale: Number(e.target.value) / 100 });
+  let lastSentScale = 0;
+  scaleInput.addEventListener('input', async e => {
+    // 拖动过程中实时应用大小
+    document.getElementById('petScaleVal').textContent = e.target.value + '%';
+    const v = Number(e.target.value) / 100;
+    if (v === lastSentScale) return;
+    lastSentScale = v;
+    await window.petAPI.prefsSet({ petScale: v });
   });
   document.getElementById('saveBtn').addEventListener('click', saveSettings);
 
