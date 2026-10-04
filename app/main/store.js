@@ -17,6 +17,7 @@ const DEFAULTS = {
     volume: 0.9,
     controlsVisible: true,
     trayVisible: true,
+    petScale: 1,
     petBounds: null
   }
 };
@@ -37,6 +38,10 @@ export function loadSettings() {
       // { asr: {enc}, llm: {enc}, tts: {enc} } —— 只存密文 base64
       keys: raw.keys || {}
     };
+    // 迁移：旧的 petBounds（含尺寸）拆分为 petPos（仅位置）+ petScale
+    if (!cache.prefs.petPos && cache.prefs.petBounds) {
+      cache.prefs.petPos = { x: cache.prefs.petBounds.x, y: cache.prefs.petBounds.y };
+    }
   } catch {
     cache = JSON.parse(JSON.stringify(DEFAULTS));
     cache.keys = {};

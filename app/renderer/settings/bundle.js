@@ -4,13 +4,17 @@
     return {
       theme: document.getElementById("theme").value,
       topmost: document.getElementById("topmost").checked,
-      controlsVisible: document.getElementById("controlsVisible").checked
+      controlsVisible: document.getElementById("controlsVisible").checked,
+      petScale: Number(document.getElementById("petScale").value) / 100
     };
   }
   function fillPrefs(prefs = {}) {
     document.getElementById("theme").value = prefs.theme || "day";
     document.getElementById("topmost").checked = !!prefs.topmost;
     document.getElementById("controlsVisible").checked = prefs.controlsVisible !== false;
+    const sc = Math.round((Number(prefs.petScale) || 1) * 100);
+    document.getElementById("petScale").value = sc;
+    document.getElementById("petScaleVal").textContent = sc + "%";
   }
   async function saveSettings() {
     await window.petAPI.prefsSet(readPrefsFromForm());
@@ -27,6 +31,13 @@
     });
     document.getElementById("controlsVisible").addEventListener("change", async (e) => {
       await window.petAPI.prefsSet({ controlsVisible: e.target.checked });
+    });
+    const scaleInput = document.getElementById("petScale");
+    scaleInput.addEventListener("input", () => {
+      document.getElementById("petScaleVal").textContent = scaleInput.value + "%";
+    });
+    scaleInput.addEventListener("change", async (e) => {
+      await window.petAPI.prefsSet({ petScale: Number(e.target.value) / 100 });
     });
     document.getElementById("saveBtn").addEventListener("click", saveSettings);
     window.petAPI.onPrefsChanged((prefs) => fillPrefs(prefs));

@@ -57,6 +57,14 @@ function applyPrefs(prefs = {}) {
   if (!stage) return;
   if (prefs.theme) ui.setTheme(prefs.theme);
   if (prefs.pose) stage.applyPose(prefs.pose);
+  if (prefs.petScale !== undefined) {
+    const sc = Math.min(3, Math.max(0.3, Number(prefs.petScale) || 1));
+    const st = stage.el.stack;
+    st.style.width = Math.round(340 * sc) + 'px';
+    st.style.height = Math.round(453 * sc) + 'px';
+    st.style.bottom = Math.round(90 * sc) + 'px';
+    stage._updateBottomScale();
+  }
 }
 
 function wireCursorAndDrag() {

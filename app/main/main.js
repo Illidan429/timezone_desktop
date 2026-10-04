@@ -63,15 +63,45 @@ function registerAppProtocol() {
 }
 
 // ---------- 窗口 ----------
-function petBounds() {
-  const saved = loadSettings().prefs.petBounds;
-  const display = screen.getPrimaryDisplay().workArea;
-  if (saved && saved.width) return saved;
-  return { x: display.x + display.width - 560, y: display.y + display.height - 760, width: 480, height: 680 };
+const BASE_W = 480, BASE_H = 680;
+
+function petScale() {
+  const s = Number(loadSettings().prefs.petScale);
+  return s >= 0.3 && s <= 3 ? s : 1;
+}
+
+function petWindowBounds() {
+  const prefs = loadSettings().prefs;
+  const s = petScale();
+  const pos = prefs.petPos || (prefs.petBounds ? { x: prefs.petBounds.x, y: prefs.petBounds.y } : null);
+  const w = Math.round(BASE_W * s), h = Math.round(BASE_H * s);
+  if (pos) {
+    // 位置在哪块屏上就按哪块屏校准（支持多显示器）
+    const display = screen.getDisplayNearestPoint({ x: pos.x, y: pos.y }).workArea;
+    const x = Math.min(Math.max(pos.x, display.x), display.x + display.width - w);
+    const y = Math.min(Math.max(pos.y, display.y), display.y + display.height - h);
+    return { x, y, width: w, height: h };
+  }
+  return { x: display.x + display.width - w - 80, y: display.y + display.height - h - 80, width: w, height: h };
+}
+
+// 应用缩放：以底边中点为锚缩放窗口，角色落点不跳
+function applyPetScale() {
+  if (!petWin) return;
+  const b = petWin.getBounds();
+  const s = petScale();
+  const w = Math.round(BASE_W * s), h = Math.round(BASE_H * s);
+  petWin.setBounds({
+    x: Math.round(b.x + (b.width - w) / 2),
+    y: Math.round(b.y + (b.height - h)),
+    width: w, height: h
+  });
+  const nb = petWin.getBounds();
+  updatePrefs({ petPos: { x: nb.x, y: nb.y } });
 }
 
 function createPetWindow() {
-  const b = petBounds();
+  const b = petWindowBounds();
   const prefs = loadSettings().prefs;
   petWin = new BrowserWindow({
     x: b.x, y: b.y, width: b.width, height: b.height,
@@ -118,7 +148,8 @@ function scheduleSaveBounds() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     if (petWin && !petWin.isDestroyed()) {
-      updatePrefs({ petBounds: petWin.getBounds() });
+      const [x, y] = petWin.getPosition();
+      updatePrefs({ petPos: { x, y } });
     }
   }, 400);
 }
@@ -258,6 +289,7 @@ function registerIpc() {
 
   ipcMain.handle('settings:save', (_e, payload) => {
     saveSettings(payload);
+    if (payload.prefs && 'petScale' in payload.prefs) applyPetScale();
     rebuildTrayMenu();
     const view = sanitizedView();
     petWin?.webContents.send('prefs-changed', view.prefs);
@@ -269,6 +301,7 @@ function registerIpc() {
 
   ipcMain.handle('prefs:set', (_e, patch) => {
     updatePrefs(patch);
+    if ('petScale' in patch) applyPetScale();
     rebuildTrayMenu();
     petWin?.webContents.send('prefs-changed', sanitizedView().prefs);
     return loadSettings().prefs;
@@ -361,6 +394,13 @@ async function runSmoke() {
       result.checks.windowMove = after.x === before.x + 15 && after.y === before.y + 10;
       result.checks.moveDbg = `before=(${before.x},${before.y}) after=(${after.x},${after.y})`;
       petWin.setBounds(before);
+      // 缩放：1.5 倍 → 窗口 720×1020，位置锚定底边
+      await petWin.webContents.executeJavaScript(`window.petAPI.prefsSet({ petScale: 1.5 })`);
+      await new Promise(r => setTimeout(r, 400));
+      const sb = petWin.getBounds();
+      result.checks.petScale = sb.width === 720 && sb.height === 1020;
+      await petWin.webContents.executeJavaScript(`window.petAPI.prefsSet({ petScale: 1 })`);
+      await new Promise(r => setTimeout(r, 300));
       // Key 加密回读（主进程 store 直接验证）
       const { setApiKey, getApiKey } = await import('./store.js');
       setApiKey('llm', 'sk-smoke-test-123');
@@ -388,7 +428,7 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     // 冒烟模式：预置一个特殊窗口位置，用于验证位置记忆恢复
-    if (IS_SMOKE) updatePrefs({ petBounds: { x: 111, y: 222, width: 480, height: 680 } });
+    if (IS_SMOKE) updatePrefs({ petPos: { x: 111, y: 222 }, petScale: 1 });
     registerAppProtocol();
     registerIpc();
     createPetWindow();
@@ -408,7 +448,8 @@ if (!gotLock) {
   app.on('before-quit', () => {
     clearInterval(cursorTimer);
     if (petWin && !petWin.isDestroyed()) {
-      updatePrefs({ petBounds: petWin.getBounds() });
+      const [x, y] = petWin.getPosition();
+      updatePrefs({ petPos: { x, y } });
     }
   });
 }
