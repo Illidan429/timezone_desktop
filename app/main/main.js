@@ -201,9 +201,13 @@ function createTray() {
   tray.setToolTip('桌宠伴侣');
   // 左键单击始终显示（避免找桌宠时误点托盘把角色藏起来的陷阱）；显式隐藏走菜单项
   tray.on('click', () => {
-    if (!petWin) return;
-    petWin.show();
-    petWin.focus();
+    if (petWin && !petWin.isDestroyed()) {
+      petWin.show();
+      petWin.focus();
+    } else {
+      petWin = null;
+      createPetWindow();
+    }
   });
   rebuildTrayMenu();
 }
@@ -213,7 +217,14 @@ function rebuildTrayMenu() {
   const prefs = loadSettings().prefs;
   const poses = readManifestPoses();
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '显示 / 隐藏角色', click: () => { if (petWin) petWin.isVisible() ? petWin.hide() : petWin.show(); } },
+    { label: '显示 / 隐藏角色', click: () => {
+        if (petWin && !petWin.isDestroyed()) {
+          petWin.isVisible() ? petWin.hide() : petWin.show();
+        } else {
+          petWin = null;
+          createPetWindow();
+        }
+      } },
     { label: '打开设置', click: () => createSettingsWindow() },
     { type: 'separator' },
     {
@@ -430,7 +441,14 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (petWin) { petWin.show(); petWin.focus(); }
+    // 再次启动保证有可见的桌宠：窗口还在就唤起，被销毁/丢失则重建
+    if (petWin && !petWin.isDestroyed()) {
+      petWin.show();
+      petWin.focus();
+    } else {
+      petWin = null;
+      createPetWindow();
+    }
   });
 
   app.whenReady().then(() => {
