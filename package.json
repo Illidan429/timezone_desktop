@@ -1,9 +1,9 @@
 {
   "name": "bili-desktop-pet",
   "productName": "桌宠伴侣",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "B站主播桌面宠物：图片立绘 + 视线跟随 + 语音聊天",
+  "description": "AI 陪伴桌宠：图片立绘 + 视线跟随 + 固定音色语音聊天",
   "main": "app/main/main.js",
   "type": "module",
   "engines": {
@@ -13,6 +13,8 @@
     "dev": "npm run build:ui && electron .",
     "start": "npm run build:ui && electron .",
     "smoke": "npm run build:ui && electron . --smoke",
+    "probe:engine": "electron scripts/probe-engine.mjs",
+    "probe:migration": "electron scripts/probe-migration.mjs legacy && electron scripts/probe-migration.mjs fresh",
     "build:ui": "node scripts/build-renderer.mjs",
     "gen:assets": "node scripts/gen-placeholder-assets.mjs",
     "dist": "npm run build:ui && electron-builder --win"
@@ -58,5 +60,8 @@
     "portable": {
       "artifactName": "${productName}-portable-${version}.${ext}"
     }
+  },
+  "dependencies": {
+    "yauzl": "^3.4.0"
   }
 }

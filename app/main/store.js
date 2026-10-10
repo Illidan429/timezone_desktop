@@ -18,7 +18,11 @@ const DEFAULTS = {
     controlsVisible: true,
     trayVisible: true,
     petScale: 1,
-    petBounds: null
+    petBounds: null,
+    persona: '',
+    engineUrl: '',
+    ttsType: 'gptsovits',
+    voiceModel: ''
   }
 };
 
@@ -42,6 +46,9 @@ export function loadSettings() {
     if (!cache.prefs.petPos && cache.prefs.petBounds) {
       cache.prefs.petPos = { x: cache.prefs.petBounds.x, y: cache.prefs.petBounds.y };
     }
+    // 迁移：旧版设置文件没有 ttsType 字段 → 视为升级用户，延续其既有云端合成路线
+    // （全新安装无 raw.prefs，保持默认 gptsovits；见 ai-companion-refocus 设计 D4）
+    if (raw && raw.prefs && !('ttsType' in raw.prefs)) cache.prefs.ttsType = 'openai';
   } catch {
     cache = JSON.parse(JSON.stringify(DEFAULTS));
     cache.keys = {};

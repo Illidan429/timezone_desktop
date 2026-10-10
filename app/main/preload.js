@@ -14,6 +14,12 @@ contextBridge.exposeInMainWorld('petAPI', {
   chatClear: () => ipcRenderer.invoke('chat:clear'),
   chatCancel: () => ipcRenderer.invoke('chat:cancel'),
 
+  engineStatus: () => ipcRenderer.invoke('engine:status'),
+  engineDownload: (url) => ipcRenderer.invoke('engine:download', url),
+  engineStart: () => ipcRenderer.invoke('engine:start'),
+  engineStop: () => ipcRenderer.invoke('engine:stop'),
+  voiceModelImport: () => ipcRenderer.invoke('voiceModel:import'),
+
   windowMoveBy: (dx, dy) => ipcRenderer.invoke('window:moveBy', dx, dy),
   windowSetIgnoreMouse: (ignore) => ipcRenderer.invoke('window:setIgnoreMouse', ignore),
   windowOpenSettings: () => ipcRenderer.invoke('window:openSettings'),
@@ -22,5 +28,6 @@ contextBridge.exposeInMainWorld('petAPI', {
 
   onCursor: (cb) => { ipcRenderer.on('cursor', (_e, pt) => cb(pt)); },
   onPrefsChanged: (cb) => { ipcRenderer.on('prefs-changed', (_e, prefs) => cb(prefs)); },
-  onSettingsChanged: (cb) => { ipcRenderer.on('settings-changed', (_e, view) => cb(view)); }
+  onSettingsChanged: (cb) => { ipcRenderer.on('settings-changed', (_e, view) => cb(view)); },
+  onEngineState: (cb) => { ipcRenderer.on('engine-state', (_e, status) => cb(status)); }
 });

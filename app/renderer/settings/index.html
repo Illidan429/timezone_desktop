@@ -54,7 +54,12 @@
 </head>
 <body>
   <h1>设置</h1>
-  <div class="tip">调整桌宠的外观与窗口行为。</div>
+  <div class="tip">AI 服务使用 OpenAI 兼容接口格式。API Key 仅保存在本机（加密存储），不会回显。配置后请逐项点击「测试」验证可用。</div>
+
+  <section>
+    <h2>AI 服务</h2>
+    <div id="apiBlocks"></div>
+  </section>
 
   <section>
     <h2>偏好</h2>
@@ -62,6 +67,13 @@
       <div>
         <div class="pref-row"><label>主题</label>
           <select id="theme"><option value="day">日间</option><option value="night">夜间</option></select>
+        </div>
+        <div class="pref-row"><label>默认模式</label>
+          <select id="mode">
+            <option value="push">按键说话</option>
+            <option value="handsfree">免提监听</option>
+            <option value="text">文字输入</option>
+          </select>
         </div>
       </div>
       <div>
@@ -75,7 +87,62 @@
         <div class="pref-row"><label>显示操作栏</label>
           <input type="checkbox" id="controlsVisible" />
         </div>
+        <div class="pref-row"><label>播放音量</label>
+          <input type="range" id="volume" min="0" max="100" step="1" style="flex:1" />
+          <span id="volumeVal"></span>
+        </div>
       </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>语音引擎（本地 GPT-SoVITS）</h2>
+    <div class="row"><label>下载地址</label><input id="engineUrl" placeholder="引擎包 ZIP 直链（由委托人提供），留空使用已保存地址" /></div>
+    <div class="row"><label>引擎状态</label><span id="engineState" style="font-size:13px">检查中…</span></div>
+    <div class="row">
+      <label></label>
+      <button class="testbtn" id="engineDownloadBtn">下载 / 修复引擎包</button>
+      <button class="testbtn" id="engineStartBtn">预启动热身</button>
+      <span class="test-result" id="engineMsg"></span>
+    </div>
+    <div style="color:#7b8494;font-size:12px">首次下载约 2~3GB；首次启动加载模型需 10~60 秒；纯 CPU 合成约 5~15 秒/句，语音回复会晚于文字出现。</div>
+  </section>
+
+  <section>
+    <h2>音色（固定目标音色）</h2>
+    <div class="row"><label>合成路线</label>
+      <select id="ttsType" style="flex:1">
+        <option value="gptsovits">GPT-SoVITS（本机引擎 · 固定音色）</option>
+        <option value="openai">OpenAI 兼容（云端）</option>
+      </select>
+    </div>
+    <div class="row"><label>已导入音色</label>
+      <select id="voiceModelList" style="flex:1"><option value="">（尚未导入）</option></select>
+    </div>
+    <div class="row">
+      <label></label>
+      <button class="testbtn" id="voiceImportBtn">导入音色模型</button>
+      <button class="testbtn" id="voiceEnableBtn">启用所选</button>
+      <button class="testbtn" id="voicePreviewBtn">试听</button>
+      <span class="test-result" id="voiceMsg"></span>
+    </div>
+    <div style="color:#7b8494;font-size:12px">选择包含 model/（gpt.ckpt、sovits.pth）与 ref/（default.wav、prompt.txt）的音色目录（规范见 docs/voice-engine-spec.md）。启用后本机合成都将使用该音色；切换音色会重启引擎。</div>
+  </section>
+
+  <section>
+    <h2>角色人设</h2>
+    <div class="row" style="align-items:flex-start">
+      <label>人设提示词</label>
+      <textarea id="persona" rows="5" style="flex:1;border:1px solid #dfe3ea;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;font-family:inherit;resize:vertical" placeholder="例如：你是一位温柔的桌面伙伴，自称「小伴」…"></textarea>
+    </div>
+    <div style="color:#7b8494;font-size:12px;margin-top:4px">已填写 <span id="personaCount">0</span> 字；留空则使用内置默认人设。人设决定角色的性格、自称与说话方式。</div>
+  </section>
+
+  <section>
+    <h2>对话</h2>
+    <div class="actions">
+      <button class="ghost" id="clearBtn">清空对话上下文</button>
+      <span style="color:#7b8494;font-size:12px">清除后角色将忘记之前的聊天内容</span>
     </div>
   </section>
 

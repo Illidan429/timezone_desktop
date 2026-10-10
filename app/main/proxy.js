@@ -1,6 +1,7 @@
 // 主进程网络代理：所有外部 AI 请求从这里发出，Key 不进渲染端
 import { net } from 'electron';
 import { getApiKey, loadSettings } from './store.js';
+import { DEFAULT_PERSONA } from '../shared/constants.js';
 
 const controllers = new Set();
 
@@ -130,13 +131,21 @@ export async function testApi(type) {
   }
 }
 
-// LLM 对话（非流式）：messages 由调用方组织（含历史）
+// LLM 消息组装：人设 system 提示置顶（纯函数，便于冒烟断言）
+export function buildLlmMessages(messages, persona) {
+  const p = (persona || '').trim() || DEFAULT_PERSONA;
+  return [{ role: 'system', content: p }, ...messages.filter(m => m && m.role !== 'system')];
+}
+
+// LLM 对话（非流式）：messages 由调用方组织（含历史）。
+// 人设在此统一注入（主进程是所有 AI 请求的唯一出口）：prefs.persona 优先，空值回退默认内置人设。
 export async function chatComplete(messages) {
   const c = assertConfig('llm');
+  const body = buildLlmMessages(messages, loadSettings().prefs.persona);
   const { res } = await request('llm', joinUrl(c.baseUrl, '/chat/completions'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${c.key}` },
-    body: JSON.stringify({ model: c.model, messages, stream: false })
+    body: JSON.stringify({ model: c.model, messages: body, stream: false })
   });
   const data = await res.json();
   const text = data?.choices?.[0]?.message?.content;

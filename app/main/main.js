@@ -1,11 +1,13 @@
 // 主进程入口：应用壳、协议、托盘、IPC
-import { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, protocol } from 'electron';
+import { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, protocol, dialog } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { loadSettings, saveSettings, updatePrefs, sanitizedView } from './store.js';
 import { testApi, chatComplete, transcribe, synthesize, cancelAll } from './proxy.js';
+import { EngineManager } from './engine.js';
+import { importModel, enabledModel, listModels } from './voice-model.js';
 import { MAX_HISTORY_ROUNDS } from '../shared/constants.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +26,14 @@ let settingsWin = null;
 let tray = null;
 let cursorTimer = null;
 let saveTimer = null;
+
+// 语音引擎单例：状态变化广播到两个窗口（设置页展示、宠物页语音流程感知）
+const engine = new EngineManager({
+  onUpdate: (status) => {
+    settingsWin?.webContents.send('engine-state', status);
+    petWin?.webContents.send('engine-state', status);
+  }
+});
 
 // ---------- 自定义协议：渲染端经 app:// 访问页面与素材（支持 ESM） ----------
 protocol.registerSchemesAsPrivileged([
@@ -324,13 +334,13 @@ function clearChatHistoryFile() {
 
 // ---------- IPC ----------
 function registerIpc() {
-  ipcMain.handle('settings:get', () => sanitizedView());
+  ipcMain.handle('settings:get', () => ({ ...sanitizedView(), voiceModels: listModels() }));
 
   ipcMain.handle('settings:save', (_e, payload) => {
     saveSettings(payload);
     if (payload.prefs && 'petScale' in payload.prefs) applyPetScale();
     rebuildTrayMenu();
-    const view = sanitizedView();
+    const view = { ...sanitizedView(), voiceModels: listModels() };
     petWin?.webContents.send('prefs-changed', view.prefs);
     // 同步完整配置视图（含各 API 是否已配置），渲染端即时刷新语音可用状态
     settingsWin?.webContents.send('settings-changed', view);
@@ -349,6 +359,39 @@ function registerIpc() {
 
   ipcMain.handle('api:test', (_e, type) => testApi(type));
 
+  // 语音引擎：状态 / 下载（地址取参数或已存配置）/ 预启动 / 停止
+  ipcMain.handle('engine:status', () => engine.status());
+  ipcMain.handle('engine:download', (_e, url) => {
+    const u = String(url || '').trim() || String(loadSettings().prefs.engineUrl || '').trim();
+    return engine.download(u).then(
+      () => ({ ok: true }),
+      e => ({ ok: false, message: e.message })
+    );
+  });
+  ipcMain.handle('engine:start', () => {
+    const m = enabledModel();
+    return engine.ensureStarted(m.modelPaths || {}).then(
+      () => ({ ok: true }),
+      e => ({ ok: false, message: e.message })
+    );
+  });
+  ipcMain.handle('engine:stop', () => engine.stop().then(() => ({ ok: true })));
+
+  // 音色模型：导入（目录选择对话框）；启用/列表经 prefs 与 sanitizedView
+  ipcMain.handle('voiceModel:import', async () => {
+    const r = await dialog.showOpenDialog(settingsWin, {
+      title: '选择音色目录（含 model/ 与 ref/）',
+      properties: ['openDirectory']
+    });
+    if (r.canceled || !r.filePaths.length) return { ok: false, canceled: true };
+    try {
+      const name = await importModel(r.filePaths[0]);
+      return { ok: true, name, models: listModels() };
+    } catch (e) {
+      return { ok: false, message: e.message };
+    }
+  });
+
   // 对话历史保存在主进程并持久化（重启不丢，参照参考项目的会话管理）
   const history = loadChatHistory();
   const saveHistory = () => saveChatHistory(history);
@@ -363,7 +406,23 @@ function registerIpc() {
     });
   });
   ipcMain.handle('chat:asr', (_e, wav) => transcribe(Buffer.from(wav)));
-  ipcMain.handle('chat:tts', (_e, text) => synthesize(String(text)));
+
+  // TTS 合成路线分支：gptsovits（本机引擎·固定音色，默认）/ openai（云端，升级用户延续）
+  // 未就绪必须抛出带原因的明确错误（渲染端行内提示），不静默、不自动改道另一条路线
+  async function synthesizeText(text) {
+    const type = loadSettings().prefs.ttsType || 'openai';
+    if (type === 'gptsovits') {
+      const m = enabledModel();
+      if (m.error) throw new Error(m.error);
+      await engine.ensureStarted(m.modelPaths); // 懒启动（幂等，已就绪直接返回）
+      if (engine.state !== 'ready') {
+        throw new Error(`语音引擎未就绪（${engine.detail || engine.state}），可到设置页「语音引擎」处理`);
+      }
+      return engine.tts({ text, ...m.ref });
+    }
+    return synthesize(text);
+  }
+  ipcMain.handle('chat:tts', (_e, text) => synthesizeText(String(text)));
   ipcMain.handle('chat:clear', () => {
     history.length = 0;
     clearChatHistoryFile();
@@ -446,6 +505,70 @@ async function runSmoke() {
       setApiKey('llm', 'sk-smoke-test-123');
       result.checks = result.checks || {};
       result.checks.keyRoundtrip = getApiKey('llm') === 'sk-smoke-test-123';
+      // 人设注入：空值回退默认、自定义优先、调用方 system 被过滤
+      const { buildLlmMessages } = await import('./proxy.js');
+      const { DEFAULT_PERSONA } = await import('../shared/constants.js');
+      result.checks.personaInjection =
+        buildLlmMessages([{ role: 'user', content: 'hi' }], '')[0].content === DEFAULT_PERSONA
+        && buildLlmMessages([{ role: 'system', content: 'x' }, { role: 'user', content: 'hi' }], '自定义人设')[0].content === '自定义人设'
+        && buildLlmMessages([{ role: 'system', content: 'x' }, { role: 'user', content: 'hi' }], '').length === 2;
+      // 人设偏好持久化：写入后能读回
+      await petWin.webContents.executeJavaScript(`window.petAPI.prefsSet({ persona: '冒烟测试人设' })`);
+      const pview = await petWin.webContents.executeJavaScript(`window.petAPI.settingsGet()`);
+      result.checks.personaPersist = pview?.prefs?.persona === '冒烟测试人设';
+      await petWin.webContents.executeJavaScript(`window.petAPI.prefsSet({ persona: '' })`);
+
+      // 语音引擎端到端（桩引擎，离线）：应用内下载安装 → 未导入音色报错明确 →
+      // 假音色入库启用 → chat:tts 走本机引擎返回 WAV → 入渲染端播放队列
+      const stubSrc = path.join(ROOT, 'scripts', 'stub-engine.mjs');
+      if (fs.existsSync(stubSrc)) {
+        try {
+          const { startStubSource, makeFakeVoiceModel } = await import('./smoke-stub.mjs');
+          const vm = await import('./voice-model.js');
+          const prevTts = pview?.prefs?.ttsType || 'openai';
+          await petWin.webContents.executeJavaScript(`window.petAPI.prefsSet({ ttsType: 'gptsovits', voiceModel: '' })`);
+          result.checks.ttsLocalNoModel = await petWin.webContents.executeJavaScript(
+            `window.petAPI.chatTts('测试').then(() => false, e => String(e.message).includes('音色'))`);
+          const src = await startStubSource(stubSrc);
+          const dl = await petWin.webContents.executeJavaScript(
+            `window.petAPI.engineDownload(${JSON.stringify(src.url)})`);
+          result.checks.engineDownload = dl.ok === true;
+          const vdir = await makeFakeVoiceModel('冒烟音色');
+          await vm.importModel(vdir);
+          await fs.promises.rm(path.dirname(vdir), { recursive: true, force: true }).catch(() => {});
+          await petWin.webContents.executeJavaScript(`window.petAPI.prefsSet({ voiceModel: '冒烟音色' })`);
+          result.checks.engineTtsPlays = await petWin.webContents.executeJavaScript(
+            `(async () => {
+               try {
+                 const wav = await window.petAPI.chatTts('冒烟合成测试');
+                 const u8 = new Uint8Array(wav);
+                 const riff = String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) === 'RIFF';
+                 const player = window.__PET_DEBUG__.player;
+                 player.ensureCtx(); player.setVolume(0);
+                 let started = false; player.onStart = () => { started = true; };
+                 player.enqueue(wav);
+                 await new Promise(r => setTimeout(r, 600));
+                 const playing = player.playing;
+                 player.stopAndClear();
+                 window.__PET_ENGINE_DBG__ = 'bytes=' + wav.byteLength + ',riff=' + riff + ',started=' + started + ',playing=' + playing;
+                 return riff && started && playing;
+               } catch (e) { window.__PET_ENGINE_DBG__ = 'error: ' + (e && e.message || e); return false; }
+             })()`);
+          result.checks.engineTtsDbg = await petWin.webContents.executeJavaScript('window.__PET_ENGINE_DBG__ || ""');
+          // 清理：停引擎、恢复 TTS 路线、删除桩引擎与冒烟音色，引擎状态复位
+          await petWin.webContents.executeJavaScript(`window.petAPI.engineStop()`);
+          await petWin.webContents.executeJavaScript(
+            `window.petAPI.prefsSet({ ttsType: ${JSON.stringify(prevTts)}, voiceModel: '' })`);
+          await fs.promises.rm(engine.rootDir, { recursive: true, force: true }).catch(() => {});
+          await fs.promises.rm(path.join(app.getPath('userData'), 'voice-models', '冒烟音色'),
+            { recursive: true, force: true }).catch(() => {});
+          await engine.checkInstalled().catch(() => {});
+          await src.cleanup();
+        } catch (e) {
+          result.checks.engineE2E = false;
+          result.errors.push('engine smoke: ' + String(e?.stack || e));
+        }
+      };
     }
     result.ok = result.windows.pet && result.tray && result.renderer?.ready && !result.renderer?.errors?.length
       && result.checks?.allOk === true;
@@ -482,6 +605,7 @@ app.whenReady().then(() => {
     if (IS_SMOKE) updatePrefs({ petPos: { x: 111, y: 222 }, petScale: 1 });
     registerAppProtocol();
     registerIpc();
+    engine.checkInstalled().catch(() => {});
     try {
       createPetWindow();
       log('宠物窗口已创建');
@@ -508,6 +632,7 @@ app.whenReady().then(() => {
 
   app.on('before-quit', () => {
     clearInterval(cursorTimer);
+    engine.stop().catch(() => {});
     if (petWin && !petWin.isDestroyed()) {
       const [x, y] = petWin.getPosition();
       updatePrefs({ petPos: { x, y } });
